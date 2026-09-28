@@ -7,11 +7,11 @@
     ("edit", "Edit", "/projects/" ~ project.id ~ "/editor", has_artifact),
     ("publish", "Publish", "/projects/" ~ project.id ~ "/editor", has_artifact),
 ] %}
-<nav class="stepper">
+<nav class="stepper" aria-label="Project steps">
     {% for key, label, href, reachable in steps %}
         {% set state = "active" if loop.index0 == active_index else ("done" if loop.index0 < active_index else "") %}
         <div class="stepper-step {{ state }}">
-            <span class="num">{{ loop.index }}</span>
+            <span class="num">{% if state == "done" %}&#10003;{% else %}{{ loop.index }}{% endif %}</span>
             {% if reachable %}<a href="{{ href }}">{{ label }}</a>{% else %}<span>{{ label }}</span>{% endif %}
         </div>
         {% if not loop.last %}<div class="stepper-sep"></div>{% endif %}

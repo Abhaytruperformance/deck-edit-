@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ project.title }}{% endblock %}
+{% block breadcrumb %}
+<a href="/clients">Clients</a><span class="sep">/</span><a href="/clients/{{ client.id }}">{{ client.name }}</a><span class="sep">/</span><span class="current">{{ project.title }}</span>
+{% endblock %}
+{% block header_actions %}
+{% if artifact %}<a href="/projects/{{ project.id }}/editor" class="btn btn-primary btn-sm">Open editor</a>{% endif %}
+{% endblock %}
 {% block content %}
-<p><a href="/clients/{{ client.id }}">&larr; {{ client.name }}</a></p>
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: var(--space-4);">
-    <h1 style="margin:0;">{{ project.title }}</h1>
-    <span class="badge badge-status-{{ project.status }}">{{ project.status.replace("_", " ") }}</span>
+{% set type_label = "PowerPoint deck" if project.deliverable_type == "pptx" else ("Spreadsheet" if project.deliverable_type == "xlsx" else "Animated HTML page") %}
+<div class="page-head">
+    <div>
+        <div class="eyebrow">{{ client.name }}</div>
+        <h1>{{ project.title }}</h1>
+    </div>
+    <div class="page-head-actions">
+        <span class="badge badge-purple">{{ type_label }}</span>
+        <span class="badge badge-status-{{ project.status }}">{{ project.status.replace("_", " ") }}</span>
+    </div>
 </div>
 
 {% include "projects/_stepper.html" with context %}
@@ -13,33 +25,80 @@
 <div class="error-banner">Draft generation failed: {{ draft_error }}</div>
 {% endif %}
 
-<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-4);">
-    <h2>Input</h2>
-    {% if latest_input %}
-    <p class="text-muted">Latest input <span class="mono">v{{ latest_input.version }}</span> &mdash; {{ latest_input.raw_data.business_name or "(untitled)" }}</p>
-    {% else %}
-    <p class="text-muted">Nothing collected yet.</p>
-    {% endif %}
-    <a href="/projects/{{ project.id }}/input" class="btn btn-secondary btn-sm">{{ "Edit input" if latest_input else "Add input" }}</a>
+{% set next_step = "input" if not latest_input else ("draft" if not artifact else "edit") %}
+<div class="step-cards">
+    <div class="step-card {{ 'is-next' if next_step == 'input' else '' }}">
+        {% if latest_input %}<span class="step-card-check" title="Done">&#10003;</span>{% endif %}
+        <div class="step-card-num">Step 1</div>
+        <h2>Input</h2>
+        {% if latest_input %}
+        <p>Version <span class="mono">v{{ latest_input.version }}</span> &mdash; {{ latest_input.raw_data.business_name or "(untitled)" }}</p>
+        {% else %}
+        <p>Fill in a short brief, upload a file, or import a Claude artifact. This is what the AI drafts from.</p>
+        {% endif %}
+        <div class="step-card-action">
+            <a href="/projects/{{ project.id }}/input" class="btn {{ 'btn-primary' if next_step == 'input' else 'btn-secondary' }} btn-sm">{{ "Edit input" if latest_input else "Add input" }}</a>
+        </div>
+    </div>
+
+    <div class="step-card {{ 'is-next' if next_step == 'draft' else '' }} {{ 'is-locked' if not latest_input else '' }}">
+        {% if artifact %}<span class="step-card-check" title="Done">&#10003;</span>{% endif %}
+        <div class="step-card-num">Step 2</div>
+        <h2>AI draft</h2>
+        {% if latest_input %}
+        <p>{% if artifact %}Current draft has {{ artifact.blocks|length }} block{{ "s" if artifact.blocks|length != 1 else "" }}. Regenerating replaces it with a fresh draft from the latest input.{% else %}Generate a first draft from the input. Takes a few seconds.{% endif %}</p>
+        <div class="step-card-action">
+            <form method="post" action="/projects/{{ project.id }}/draft" {% if artifact %}onsubmit="return confirm('Regenerate the draft? Unsaved edits in the current draft will be replaced.');"{% endif %}>
+                <button type="submit" class="btn {{ 'btn-primary' if next_step == 'draft' else 'btn-secondary' }} btn-sm">{{ "Regenerate draft" if artifact else "Generate draft" }}</button>
+            </form>
+        </div>
+        {% else %}
+        <p>Add input first.</p>
+        {% endif %}
+    </div>
+
+    <div class="step-card {{ 'is-next' if next_step == 'edit' else '' }} {{ 'is-locked' if not artifact else '' }}">
+        {% if project.status == "published" %}<span class="step-card-check" title="Published">&#10003;</span>{% endif %}
+        <div class="step-card-num">Step 3</div>
+        <h2>Edit &amp; publish</h2>
+        {% if artifact %}
+        <p>Refine each block, save versions, export a file, or publish a shareable link.</p>
+        <div class="step-card-action">
+            <a href="/projects/{{ project.id }}/editor" class="btn {{ 'btn-primary' if next_step == 'edit' else 'btn-secondary' }} btn-sm">Open editor</a>
+        </div>
+        {% else %}
+        <p>Generate a draft first.</p>
+        {% endif %}
+    </div>
 </div>
 
-<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-4);">
-    <h2>AI draft</h2>
-    {% if latest_input %}
-    <p class="text-muted">Generates a fresh block list from the latest input above{% if artifact %} - this replaces the current draft{% endif %}.</p>
-    <form method="post" action="/projects/{{ project.id }}/draft">
-        <button type="submit" class="btn btn-primary">{{ "Regenerate draft" if artifact else "Generate draft" }}</button>
-    </form>
-    {% else %}
-    <p class="text-muted">Add input first.</p>
-    {% endif %}
-</div>
-
-{% if artifact %}
-<div class="card" style="padding: var(--space-5);">
-    <h2>Editor</h2>
-    <p class="text-muted">{{ artifact.blocks|length }} block{{ "s" if artifact.blocks|length != 1 else "" }} in the current draft.</p>
-    <a href="/projects/{{ project.id }}/editor" class="btn btn-primary">Open editor</a>
-</div>
-{% endif %}
+<details class="disclosure" style="margin-top: var(--space-6); max-width: 560px;">
+    <summary>Project settings</summary>
+    <div class="disclosure-body">
+        <form method="post" action="/projects/{{ project.id }}/update">
+            <div class="field">
+                <label for="p_title">Title</label>
+                <input id="p_title" name="title" value="{{ project.title }}" required>
+            </div>
+            <div class="field">
+                <label for="p_type">Deliverable</label>
+                <select id="p_type" name="deliverable_type">
+                    <option value="pptx" {{ "selected" if project.deliverable_type == "pptx" else "" }}>PowerPoint deck (.pptx)</option>
+                    <option value="xlsx" {{ "selected" if project.deliverable_type == "xlsx" else "" }}>Spreadsheet (.xlsx)</option>
+                    <option value="animated_html" {{ "selected" if project.deliverable_type == "animated_html" else "" }}>Animated HTML page</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-secondary btn-sm">Save changes</button>
+            </div>
+        </form>
+        <div class="danger-zone" style="margin-top: var(--space-4);">
+            <span><strong>Delete project</strong> &mdash; removes its input, drafts, versions, and links.</span>
+            <form method="post" action="/projects/{{ project.id }}/delete"
+                  onsubmit="return confirm('Delete &quot;{{ project.title }}&quot;? This removes its input, draft, versions, and any published link. This can&#39;t be undone.');">
+                <button type="submit" class="btn btn-danger-ghost btn-sm">Delete</button>
+            </form>
+        </div>
+    </div>
+</details>
 {% endblock %}

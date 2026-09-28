@@ -1,51 +1,107 @@
 {% extends "base.html" %}
 {% block title %}{{ client.name }}{% endblock %}
+{% block breadcrumb %}
+<a href="/clients">Clients</a><span class="sep">/</span><span class="current">{{ client.name }}</span>
+{% endblock %}
+{% block header_actions %}
+<a href="#new-project" class="btn btn-primary btn-sm">+ New project</a>
+{% endblock %}
 {% block content %}
-<p><a href="/clients">&larr; All clients</a></p>
-<h1>{{ client.name }}</h1>
-<p class="text-muted">
-    {{ client.contact_email or "" }}{% if client.contact_email and client.contact_phone %} &middot; {% endif %}{{ client.contact_phone or "" }}
-</p>
-{% if client.notes %}<p>{{ client.notes }}</p>{% endif %}
-
-<div class="form-card" style="max-width: 480px; margin-top: var(--space-6);">
-    <h2>New project</h2>
-    <form method="post" action="/clients/{{ client.id }}/projects">
-        <div class="field">
-            <label for="title">Project title</label>
-            <input id="title" name="title" placeholder="Q3 Board Deck" required>
-        </div>
-        <div class="field">
-            <label for="deliverable_type">Deliverable type</label>
-            <select id="deliverable_type" name="deliverable_type">
-                <option value="pptx">PowerPoint (.pptx)</option>
-                <option value="xlsx">Spreadsheet (.xlsx)</option>
-                <option value="animated_html">Animated HTML page</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-primary">Create project</button>
-    </form>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Client</div>
+        <h1>{{ client.name }}</h1>
+        <p class="text-muted" style="margin: var(--space-1) 0 0;">
+            {% if client.contact_email or client.contact_phone %}
+            {{ client.contact_email or "" }}{% if client.contact_email and client.contact_phone %} &middot; {% endif %}{{ client.contact_phone or "" }}
+            {% else %}No contact details yet{% endif %}
+        </p>
+    </div>
 </div>
+{% if client.notes %}<p class="page-lead">{{ client.notes }}</p>{% endif %}
 
-
-<h2 style="margin-top: var(--space-6);">Projects</h2>
-<p class="text-muted" style="font-size:13px; margin-top:-8px;">Rename, change type, or delete a project from its entry in the sidebar.</p>
-{% if projects %}
-<div class="card-list">
-    {% for p in projects %}
-    <a class="list-row" href="/projects/{{ p.id }}" style="text-decoration:none; color:inherit;">
-        <div>
-            <div class="list-row-title">{{ p.title }}</div>
-            <div class="text-muted mono" style="font-size:12px; margin-top: 2px;">{{ p.deliverable_type }}</div>
+<div class="editor-layout" style="grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);">
+    <div>
+        <h2 style="margin-bottom: var(--space-3);">Projects</h2>
+        {% if projects %}
+        <div class="card-list">
+            {% for p in projects %}
+            <a class="list-row" href="/projects/{{ p.id }}">
+                <div>
+                    <div class="list-row-title">{{ p.title }}</div>
+                    <div class="list-row-sub">
+                        {% if p.deliverable_type == "pptx" %}PowerPoint deck{% elif p.deliverable_type == "xlsx" %}Spreadsheet{% else %}Animated HTML page{% endif %}
+                    </div>
+                </div>
+                <span class="badge badge-status-{{ p.status }}">{{ p.status.replace("_", " ") }}</span>
+            </a>
+            {% endfor %}
         </div>
-        <span class="badge badge-status-{{ p.status }}">{{ p.status.replace("_", " ") }}</span>
-    </a>
-    {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <h3>No projects yet</h3>
+            <p>Create the first one on the right. You'll add a brief, draft it with AI, then edit and publish.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <div id="new-project" class="form-card">
+            <div class="eyebrow">Add</div>
+            <h2>New project</h2>
+            <form method="post" action="/clients/{{ client.id }}/projects">
+                <div class="field">
+                    <label for="title">Project title</label>
+                    <input id="title" name="title" placeholder="Q3 Board Deck" required>
+                </div>
+                <div class="field">
+                    <label for="deliverable_type">Deliverable</label>
+                    <select id="deliverable_type" name="deliverable_type">
+                        <option value="pptx">PowerPoint deck (.pptx)</option>
+                        <option value="xlsx">Spreadsheet (.xlsx)</option>
+                        <option value="animated_html">Animated HTML page</option>
+                    </select>
+                    <span class="hint">You can change this later from the project's settings.</span>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create project</button>
+                </div>
+            </form>
+        </div>
+
+        <details class="disclosure" style="margin-top: var(--space-4);">
+            <summary>Client details &amp; settings</summary>
+            <div class="disclosure-body">
+                <form method="post" action="/clients/{{ client.id }}/update">
+                    <div class="field">
+                        <label for="c_name">Name</label>
+                        <input id="c_name" name="name" value="{{ client.name }}" required>
+                    </div>
+                    <div class="field">
+                        <label for="c_email">Contact email</label>
+                        <input id="c_email" name="contact_email" type="email" value="{{ client.contact_email or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="c_phone">Contact phone</label>
+                        <input id="c_phone" name="contact_phone" value="{{ client.contact_phone or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="c_notes">Notes</label>
+                        <textarea id="c_notes" name="notes" rows="3">{{ client.notes or '' }}</textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-secondary btn-sm">Save changes</button>
+                    </div>
+                </form>
+                <div class="danger-zone" style="margin-top: var(--space-4);">
+                    <span><strong>Delete client</strong> &mdash; removes all of its projects too.</span>
+                    <form method="post" action="/clients/{{ client.id }}/delete"
+                          onsubmit="return confirm('Delete &quot;{{ client.name }}&quot; and all of its projects? This can&#39;t be undone.');">
+                        <button type="submit" class="btn btn-danger-ghost btn-sm">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </details>
+    </div>
 </div>
-{% else %}
-<div class="empty-state">
-    <h3>No projects yet</h3>
-    <p>Start one above - collect input, then draft with AI.</p>
-</div>
-{% endif %}
 {% endblock %}

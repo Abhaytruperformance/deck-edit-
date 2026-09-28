@@ -5,7 +5,7 @@
 {% if not artifact.blocks %}
 <div class="empty-state">
     <h3>No blocks in this draft</h3>
-    <p>Generate an AI draft from the project page to populate the editor.</p>
+    <p>Generate an AI draft from the project page, or add a block below.</p>
 </div>
 {% endif %}
 
@@ -13,8 +13,8 @@
 <div class="block-card {{ 'disabled' if not block.enabled else '' }}">
     <div class="block-card-header">
         <div class="block-card-header-left">
-            <span class="badge badge-mono">{{ block.type.replace("_", " ") }}</span>
-            <span class="text-faint mono" style="font-size:12px;">{{ block.id }}</span>
+            <span class="badge badge-mono badge-purple">{{ block.type.replace("_", " ") }}</span>
+            {% if not block.enabled %}<span class="badge">Hidden from output</span>{% endif %}
         </div>
         <div class="block-controls">
             <form hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/move" hx-target="#blocks-list" hx-swap="outerHTML" style="display:contents;">
@@ -25,14 +25,14 @@
                 <input type="hidden" name="direction" value="down">
                 <button type="submit" class="btn-icon" title="Move down" {{ "disabled" if loop.last else "" }}>&darr;</button>
             </form>
-            <label class="switch" title="{{ 'Enabled - included in output' if block.enabled else 'Disabled - skipped at render' }}">
+            <label class="switch" style="margin-left: var(--space-2);" title="{{ 'Included in output - click to hide' if block.enabled else 'Hidden - click to include' }}">
                 <input type="checkbox" hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/toggle" hx-target="#blocks-list" hx-swap="outerHTML" {{ "checked" if block.enabled else "" }}>
                 <span class="track"></span>
             </label>
-            <button type="button" class="btn-icon danger" title="Delete block"
+            <button type="button" class="btn-icon danger" style="margin-left: var(--space-2);" title="Delete block"
                     hx-delete="/projects/{{ project_id }}/blocks/{{ block.id }}"
                     hx-target="#blocks-list" hx-swap="outerHTML"
-                    hx-confirm="Delete this {{ block.type.replace('_', ' ') }} block? This can't be undone.">&#128465;</button>
+                    hx-confirm="Delete this {{ block.type.replace('_', ' ') }} block? This can't be undone.">&times;</button>
         </div>
     </div>
 
@@ -40,16 +40,15 @@
         {{ block_fields(block) }}
 
         <div class="block-actions-row">
-            <span></span>
             <button type="submit" class="btn btn-primary btn-sm">Save block</button>
         </div>
     </form>
 </div>
 {% endfor %}
 
-<form hx-post="/projects/{{ project_id }}/blocks" hx-target="#blocks-list" hx-swap="outerHTML"
-      style="display:flex; gap: var(--space-2); align-items:center; margin-top: var(--space-2);">
-    <select name="block_type" style="width:auto; flex:none;">
+<form class="add-block-bar" hx-post="/projects/{{ project_id }}/blocks" hx-target="#blocks-list" hx-swap="outerHTML">
+    <span class="add-block-label">Add a block</span>
+    <select name="block_type">
         <option value="title_slide">Title slide</option>
         <option value="text_block">Text block</option>
         <option value="bullet_list">Bullet list</option>
@@ -58,6 +57,6 @@
         <option value="chart">Chart</option>
         <option value="image_block">Image</option>
     </select>
-    <button type="submit" class="btn btn-secondary btn-sm">+ Add block</button>
+    <button type="submit" class="btn btn-secondary btn-sm">+ Add</button>
 </form>
 </div>

@@ -257,7 +257,7 @@ _EDIT_SCRIPT = """
   var handle = document.createElement('div');
   handle.id = '__editor_resize_handle__';
   handle.setAttribute('data-editor-injected', 'true');
-  handle.style.cssText = 'position:fixed;width:12px;height:12px;background:#4f8cff;' +
+  handle.style.cssText = 'position:fixed;width:12px;height:12px;background:#ff5a24;' +
     'border:2px solid #fff;border-radius:50%;box-shadow:0 0 2px rgba(0,0,0,.5);' +
     'cursor:nwse-resize;z-index:2147483647;display:none;';
   document.body.appendChild(handle);
@@ -272,7 +272,7 @@ _EDIT_SCRIPT = """
   function selectImage(img) {
     if (selectedImg) selectedImg.style.outline = '';
     selectedImg = img;
-    img.style.outline = '2px solid #4f8cff';
+    img.style.outline = '2px solid #ff5a24';
     handle.style.display = 'block';
     positionHandle();
   }

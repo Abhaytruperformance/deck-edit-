@@ -1,66 +1,109 @@
 {% extends "base.html" %}
 {% block title %}Editor - {{ project.title }}{% endblock %}
 {% block main_class %} wide{% endblock %}
+{% block breadcrumb %}
+<a href="/clients">Clients</a><span class="sep">/</span><a href="/projects/{{ project.id }}">{{ project.title }}</a><span class="sep">/</span><span class="current">Editor</span>
+{% endblock %}
 {% block content %}
-<p><a href="/projects/{{ project.id }}">&larr; {{ project.title }}</a></p>
-<h1>Editor</h1>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Step 3</div>
+        <h1>Editor</h1>
+    </div>
+</div>
 {% include "projects/_stepper.html" with context %}
 
 <div class="editor-toolbar">
+    {% if not artifact.raw_html %}
+    <div class="view-toggle">
+        <a href="?view=form" class="{{ 'active' if editor_view != 'canvas' else '' }}">Form</a>
+        <a href="?view=canvas" class="{{ 'active' if editor_view == 'canvas' else '' }}">Canvas</a>
+    </div>
+    {% endif %}
     <span class="badge {{ 'badge-status-published' if artifact.current_version_id else 'badge-status-in_review' }}">
         {{ "Saved" if artifact.current_version_id else "Unsaved changes" }}
     </span>
 
-    {% if not artifact.raw_html %}
-    <div class="view-toggle">
-        <a href="?view=form" class="{{ 'active' if editor_view != 'canvas' else '' }}">Form view</a>
-        <a href="?view=canvas" class="{{ 'active' if editor_view == 'canvas' else '' }}">Canvas view</a>
-    </div>
+    <span class="editor-toolbar-spacer"></span>
+
+    <details class="menu">
+        <summary class="btn btn-secondary btn-sm">Export &#9662;</summary>
+        <div class="menu-panel">
+            <a class="menu-item" href="/projects/{{ project.id }}/export?format=html">HTML page <small>.html</small></a>
+            {% if not artifact.raw_html and project.deliverable_type != "animated_html" %}
+            <a class="menu-item" href="/projects/{{ project.id }}/export?format={{ project.deliverable_type }}">
+                {{ "PowerPoint deck" if project.deliverable_type == "pptx" else "Spreadsheet" }} <small>.{{ project.deliverable_type }}</small>
+            </a>
+            {% endif %}
+        </div>
+    </details>
+
+    {% if project.status == "draft" %}
+    <details class="menu">
+        <summary class="btn btn-ghost btn-sm" title="More">&#8943;</summary>
+        <div class="menu-panel">
+            <form method="post" action="/projects/{{ project.id }}/mark-review" style="display:block;">
+                <button type="submit" class="menu-item">Mark as in review</button>
+            </form>
+            <a class="menu-item" href="/projects/{{ project.id }}">Back to project overview</a>
+        </div>
+    </details>
     {% endif %}
 
     <form method="post" action="/projects/{{ project.id }}/save-version">
-        <button type="submit" class="btn btn-secondary btn-sm">Save Version</button>
+        <button type="submit" class="btn btn-secondary btn-sm">Save version</button>
     </form>
 
-    {% if project.status == "draft" %}
-    <form method="post" action="/projects/{{ project.id }}/mark-review">
-        <button type="submit" class="btn btn-secondary btn-sm">Mark as In Review</button>
-    </form>
-    {% endif %}
-
-    <form method="post" action="/projects/{{ project.id }}/publish" style="display:flex; gap: var(--space-2);">
-        <input name="label" placeholder="Client / link name" required style="width:160px;">
-        <input name="password" type="password" placeholder="Optional password" style="width:160px;">
-        <button type="submit" class="btn btn-primary btn-sm">Publish new link</button>
-    </form>
-
-    <div class="export-menu">
-        <a href="/projects/{{ project.id }}/export?format=html" class="btn btn-secondary btn-sm">Export HTML</a>
-        {% if not artifact.raw_html and project.deliverable_type != "animated_html" %}
-        <a href="/projects/{{ project.id }}/export?format={{ project.deliverable_type }}" class="btn btn-secondary btn-sm">Export {{ project.deliverable_type }}</a>
-        {% endif %}
-    </div>
+    <details class="menu">
+        <summary class="btn btn-primary btn-sm">Publish &#9662;</summary>
+        <div class="menu-panel menu-panel-form">
+            <div class="menu-title">Publish a new link</div>
+            <form method="post" action="/projects/{{ project.id }}/publish" style="display:block;">
+                <div class="field">
+                    <label for="pub_label">Link name</label>
+                    <input id="pub_label" name="label" placeholder="e.g. Board review" required>
+                </div>
+                <div class="field">
+                    <label for="pub_password">Password <span class="text-faint" style="font-weight:400;">(optional)</span></label>
+                    <input id="pub_password" name="password" type="password" placeholder="Leave blank for open access">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm btn-block">Publish new link</button>
+                <span class="hint">Saves the current draft as a version and pins the link to it.</span>
+            </form>
+        </div>
+    </details>
 </div>
 
 {% if shares %}
-<div class="share-list" style="margin-bottom: var(--space-4);">
+<div class="card share-panel">
+    <div class="share-panel-head">Published links <span class="badge">{{ shares|length }}</span></div>
     {% for s in shares %}
-    <div class="share-row" style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border);">
-        <div>
-            <strong>{{ s.label or "Untitled link" }}</strong>
-            &middot; <a href="/s/{{ s.slug }}" target="_blank">/s/{{ s.slug }}</a>
-            &middot; v{{ s.version_number or "?" }}
-            &middot; {{ s.view_count }} view{{ "s" if s.view_count != 1 else "" }}
-            {% if s.password_hash %}&middot; password protected{% endif %}
+    <div class="share-row">
+        <div class="share-row-main">
+            <span class="share-row-label">{{ s.label or "Untitled link" }}{% if s.password_hash %} <span class="badge" title="Password protected">&#128274; protected</span>{% endif %}</span>
+            <span class="share-row-meta">
+                <a href="/s/{{ s.slug }}" target="_blank">/s/{{ s.slug }}</a>
+                <span>&middot; v{{ s.version_number or "?" }}</span>
+                <span>&middot; {{ s.view_count }} view{{ "s" if s.view_count != 1 else "" }}</span>
+            </span>
         </div>
-        <div style="display:flex; gap: var(--space-2); align-items:center;">
-            <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/republish" style="display:flex; gap: var(--space-2);">
-                <input name="password" type="password" placeholder="New password (optional)" style="width:160px;">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Push the current draft's latest version to this link">Republish</button>
-            </form>
+        <div class="share-row-actions">
+            <details class="menu">
+                <summary class="btn btn-secondary btn-sm" title="Push the current draft's latest version to this link">Republish &#9662;</summary>
+                <div class="menu-panel menu-panel-form">
+                    <div class="menu-title">Republish this link</div>
+                    <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/republish" style="display:block;">
+                        <div class="field">
+                            <label>New password <span class="text-faint" style="font-weight:400;">(optional)</span></label>
+                            <input name="password" type="password" placeholder="Keep current">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm btn-block">Update link to latest version</button>
+                    </form>
+                </div>
+            </details>
             <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/delete"
                   onsubmit="return confirm('Delete this link? Anyone with the URL will lose access immediately.');">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Delete this link">Delete</button>
+                <button type="submit" class="btn btn-danger-ghost btn-sm" title="Delete this link">Delete</button>
             </form>
         </div>
     </div>
@@ -69,9 +112,9 @@
 {% endif %}
 
 {% if artifact.raw_html %}
-<p class="text-muted" style="font-size:13px; margin-bottom: var(--space-2);">
-    Exact clone of the imported/uploaded HTML - click anywhere below to edit text in place. Click an image to
-    select it and drag its blue handle to resize, or double-click it to replace it. Autosaves as you go.
+<p class="raw-hint">
+    Exact clone of the imported HTML. Click any text to edit it in place. Click an image to select it, drag its
+    orange handle to resize, or double-click to replace it. Changes autosave.
 </p>
 <div id="raw-format-bar" class="raw-format-bar">
     <select id="rfFont" class="raw-format-select" title="Font family">
@@ -112,12 +155,12 @@
     <div id="rsDots" class="raw-slide-dots"></div>
     <span style="flex:1;"></span>
     <button type="button" id="rsToggle" class="btn btn-secondary btn-sm">Hide slide</button>
-    <button type="button" id="rsBuild" class="btn btn-primary btn-sm">Build</button>
+    <button type="button" id="rsBuild" class="btn btn-primary btn-sm">Choose slides</button>
 </div>
 <div id="raw-build-overlay" class="raw-build-overlay" style="display:none;">
     <div class="raw-build-panel">
         <div class="raw-build-header">
-            <h3 style="margin:0;">Build the deck</h3>
+            <h3 style="margin:0;">Choose slides</h3>
             <button type="button" id="rsBuildClose" class="btn-icon" title="Close">&times;</button>
         </div>
         <p class="text-muted" style="font-size:13px; margin-top:4px;">
@@ -146,6 +189,16 @@
 {% endif %}
 
 <script>
+// Close popover menus when clicking outside them or pressing Escape.
+document.addEventListener("click", function (e) {
+    document.querySelectorAll("details.menu[open]").forEach(function (d) {
+        if (!d.contains(e.target)) d.removeAttribute("open");
+    });
+});
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll("details.menu[open]").forEach(function (d) { d.removeAttribute("open"); });
+});
+
 function reloadPreview() {
     var frame = document.getElementById("preview-frame");
     if (frame) frame.src = "/projects/{{ project.id }}/preview?t=" + Date.now();

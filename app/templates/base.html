@@ -3,103 +3,81 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Client Deliverables{% endblock %}</title>
+    <title>{% block title %}Deliverables{% endblock %} · Tru Performance</title>
+    <link rel="icon" type="image/png" href="/static/tru-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="anonymous"></script>
 </head>
 <body>
 {% set nav_clients = sidebar_clients() %}
+{% set current_path = request.url.path %}
 <div class="app-shell">
     <aside class="sidebar">
-        <a class="brand" href="/clients">Deliverables</a>
+        <a class="sidebar-logo" href="/clients" title="Tru Performance · Deliverables">
+            <img src="/static/tru-logo-white.png" alt="Tru Performance">
+        </a>
+
+        <a href="/clients" class="sidebar-nav-link {{ 'active' if current_path == '/clients' else '' }}">
+            <span class="nav-icon">&#9783;</span> All clients
+        </a>
 
         <div class="sidebar-section">
-            Clients <span class="sidebar-count">{{ nav_clients|length }}</span>
+            <span>Clients</span>
+            <button type="button" class="sidebar-section-action" title="New client"
+                    onclick="var f=document.getElementById('sidebar-new-client'); f.classList.toggle('open'); if(f.classList.contains('open')) f.querySelector('input').focus();">+</button>
         </div>
+        <form id="sidebar-new-client" class="sidebar-inline-form" method="post" action="/clients">
+            <input name="name" placeholder="Client name" required>
+            <input name="contact_email" type="email" placeholder="Contact email (optional)">
+            <div class="sidebar-inline-form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add client</button>
+                <button type="button" class="btn-ghost-dark" onclick="document.getElementById('sidebar-new-client').classList.remove('open')">Cancel</button>
+            </div>
+        </form>
+
         <nav class="sidebar-tree">
             {% for c in nav_clients %}
+            {% set client_active = current_path.startswith('/clients/' ~ c.id) %}
             <div class="sidebar-client">
-                <div class="sidebar-row sidebar-client-row">
-                    <button type="button" class="sidebar-toggle"
-                            onclick="document.getElementById('client-projects-{{ c.id }}').classList.toggle('collapsed'); this.classList.toggle('collapsed');">&#9662;</button>
+                <div class="sidebar-row sidebar-client-row {{ 'active' if client_active else '' }}">
+                    <button type="button" class="sidebar-toggle" title="Collapse / expand"
+                            onclick="document.getElementById('client-projects-{{ c.id }}').classList.toggle('collapsed'); this.classList.toggle('collapsed');">&#9660;</button>
                     <a href="/clients/{{ c.id }}" class="sidebar-row-title">{{ c.name }}</a>
-                    <span class="sidebar-row-count">{{ c.projects|selectattr("status", "equalto", "published")|list|length }}/{{ c.projects|length }}</span>
-                    <span class="sidebar-row-actions">
-                        <button type="button" class="icon-btn" title="Rename client"
-                                onclick="document.getElementById('client-edit-{{ c.id }}').classList.toggle('open')">&#9998;</button>
-                        <form method="post" action="/clients/{{ c.id }}/delete" style="display:contents;"
-                              onsubmit="return confirm('Delete &quot;{{ c.name }}&quot; and all of its projects? This can&#39;t be undone.');">
-                            <button type="submit" class="icon-btn danger" title="Delete client">&#128465;</button>
-                        </form>
-                    </span>
+                    <span class="sidebar-row-count" title="published / total projects">{{ c.projects|selectattr("status", "equalto", "published")|list|length }}/{{ c.projects|length }}</span>
                 </div>
-                <form id="client-edit-{{ c.id }}" class="sidebar-inline-form" method="post" action="/clients/{{ c.id }}/update">
-                    <input name="name" value="{{ c.name }}" placeholder="Name" required>
-                    <input name="contact_email" type="email" value="{{ c.contact_email or '' }}" placeholder="Email">
-                    <input name="contact_phone" value="{{ c.contact_phone or '' }}" placeholder="Phone">
-                    <textarea name="notes" placeholder="Notes" rows="2">{{ c.notes or '' }}</textarea>
-                    <button type="submit" class="btn btn-secondary btn-sm">Save</button>
-                </form>
-
                 <div id="client-projects-{{ c.id }}" class="sidebar-client-projects">
                     {% for p in c.projects %}
-                    <div class="sidebar-row sidebar-project-row">
+                    <a href="/projects/{{ p.id }}" class="sidebar-row sidebar-project-row {{ 'active' if current_path.startswith('/projects/' ~ p.id) else '' }}">
                         <span class="status-dot status-{{ p.status }}" title="{{ p.status.replace('_', ' ') }}"></span>
-                        <a href="/projects/{{ p.id }}" class="sidebar-row-title">{{ p.title }}</a>
-                        <span class="sidebar-row-actions">
-                            <button type="button" class="icon-btn" title="Rename project"
-                                    onclick="document.getElementById('project-edit-{{ p.id }}').classList.toggle('open')">&#9998;</button>
-                            <form method="post" action="/projects/{{ p.id }}/delete" style="display:contents;"
-                                  onsubmit="return confirm('Delete &quot;{{ p.title }}&quot;? This removes its input, draft, versions, and any published link. This can&#39;t be undone.');">
-                                <button type="submit" class="icon-btn danger" title="Delete project">&#128465;</button>
-                            </form>
-                        </span>
-                    </div>
-                    <form id="project-edit-{{ p.id }}" class="sidebar-inline-form" method="post" action="/projects/{{ p.id }}/update">
-                        <input name="title" value="{{ p.title }}" required>
-                        <select name="deliverable_type">
-                            <option value="pptx" {{ "selected" if p.deliverable_type == "pptx" else "" }}>PowerPoint</option>
-                            <option value="xlsx" {{ "selected" if p.deliverable_type == "xlsx" else "" }}>Spreadsheet</option>
-                            <option value="animated_html" {{ "selected" if p.deliverable_type == "animated_html" else "" }}>Animated HTML</option>
-                        </select>
-                        <button type="submit" class="btn btn-secondary btn-sm">Save</button>
-                    </form>
+                        <span class="sidebar-row-title">{{ p.title }}</span>
+                    </a>
                     {% else %}
-                    <p class="sidebar-empty">No projects yet.</p>
+                    <p class="sidebar-empty">No projects yet</p>
                     {% endfor %}
-
-                    <button type="button" class="sidebar-add-link"
-                            onclick="document.getElementById('client-add-{{ c.id }}').classList.toggle('open')">+ New project</button>
-                    <form id="client-add-{{ c.id }}" class="sidebar-inline-form" method="post" action="/clients/{{ c.id }}/projects">
-                        <input name="title" placeholder="Project title" required>
-                        <select name="deliverable_type">
-                            <option value="pptx">PowerPoint</option>
-                            <option value="xlsx">Spreadsheet</option>
-                            <option value="animated_html">Animated HTML</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary btn-sm">Add</button>
-                    </form>
+                    <a href="/clients/{{ c.id }}#new-project" class="sidebar-add-project">+ New project</a>
                 </div>
             </div>
             {% else %}
-            <p class="sidebar-empty">No clients yet.</p>
+            <p class="sidebar-empty">No clients yet. Add one with the + above.</p>
             {% endfor %}
         </nav>
 
-        <button type="button" class="sidebar-add-link sidebar-add-client"
-                onclick="document.getElementById('sidebar-new-client').classList.toggle('open')">+ New client</button>
-        <form id="sidebar-new-client" class="sidebar-inline-form" method="post" action="/clients">
-            <input name="name" placeholder="Client name" required>
-            <input name="contact_email" type="email" placeholder="Email (optional)">
-            <button type="submit" class="btn btn-primary btn-sm">Add</button>
-        </form>
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-row">
+                <span class="sidebar-user">Signed in</span>
+                <form method="post" action="/logout">
+                    <button type="submit" class="btn-ghost-dark">Log out</button>
+                </form>
+            </div>
+        </div>
     </aside>
     <div class="app-shell-body">
         <header class="shell-header">
-            {% block header_actions %}{% endblock %}
+            <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
+            <div class="page-head-actions">{% block header_actions %}{% endblock %}</div>
         </header>
         <main class="shell-main{% block main_class %}{% endblock %}">
             {% block content %}{% endblock %}

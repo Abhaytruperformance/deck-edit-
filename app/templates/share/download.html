@@ -4,17 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ project.title }}</title>
+    <link rel="icon" type="image/png" href="/static/tru-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
-        <div class="form-card" style="width:100%; max-width:420px; text-align:center;">
-            <h1>{{ project.title }}</h1>
+    <div class="share-shell">
+        <div class="form-card share-card">
+            <img src="/static/tru-logo.png" alt="Tru Performance">
+            <div class="eyebrow">Your deliverable is ready</div>
+            <h1 style="font-size: 24px;">{{ project.title }}</h1>
             <p class="text-muted">{{ view_count }} view{{ "s" if view_count != 1 else "" }}</p>
-            <a href="/s/{{ slug }}/download" class="btn btn-primary" style="width:100%; justify-content:center; margin-top: var(--space-3);">
+            <a href="/s/{{ slug }}/download" class="btn btn-primary btn-block" style="margin-top: var(--space-3);">
                 Download {{ ".pptx" if project.deliverable_type == "pptx" else ".xlsx" }}
             </a>
         </div>
