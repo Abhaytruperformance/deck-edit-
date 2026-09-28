@@ -9,6 +9,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <script>
+    // Apply the remembered sidebar state before first paint so it doesn't flash open.
+    (function () {
+      try {
+        var stored = localStorage.getItem("sidebar");
+        var collapsed = stored ? stored === "collapsed" : {% block sidebar_default_collapsed %}false{% endblock %};
+        if (collapsed) document.documentElement.classList.add("sidebar-collapsed");
+      } catch (e) {}
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -20,6 +30,7 @@
             <img src="/static/tru-logo-white.png" alt="Tru Performance">
         </a>
 
+        <a href="/projects/new" class="btn btn-primary btn-block" style="margin-bottom: var(--space-3);">+ New project</a>
         <a href="/clients" class="sidebar-nav-link {{ 'active' if current_path == '/clients' else '' }}">
             <span class="nav-icon">&#9783;</span> All clients
         </a>
@@ -57,7 +68,7 @@
                     {% else %}
                     <p class="sidebar-empty">No projects yet</p>
                     {% endfor %}
-                    <a href="/clients/{{ c.id }}#new-project" class="sidebar-add-project">+ New project</a>
+                    <a href="/projects/new?client_id={{ c.id }}" class="sidebar-add-project">+ New project</a>
                 </div>
             </div>
             {% else %}
@@ -76,6 +87,10 @@
     </aside>
     <div class="app-shell-body">
         <header class="shell-header">
+            <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar"
+                    onclick="var r=document.documentElement; r.classList.toggle('sidebar-collapsed'); try{localStorage.setItem('sidebar', r.classList.contains('sidebar-collapsed')?'collapsed':'open')}catch(e){}; window.dispatchEvent(new Event('resize'));">
+                <span></span><span></span><span></span>
+            </button>
             <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
             <div class="page-head-actions">{% block header_actions %}{% endblock %}</div>
         </header>

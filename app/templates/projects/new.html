@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}New project{% endblock %}
+{% block breadcrumb %}
+<a href="/clients">Clients</a><span class="sep">/</span><span class="current">New project</span>
+{% endblock %}
+{% block content %}
+{% set f = form or {} %}
+{% set sel = selected_client_id or "" %}
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Start</div>
+        <h1>New project</h1>
+    </div>
+</div>
+<p class="page-lead">Name it, add what the AI should work from, and you'll land in the editor with a first draft ready.</p>
+
+{% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+
+<form method="post" action="/projects/new" enctype="multipart/form-data" class="form-card" style="max-width: 680px;"
+      onsubmit="var b=this.querySelector('button[type=submit]'); b.disabled=true; b.textContent='Creating and drafting…';">
+    <div class="field-row">
+        <div class="field">
+            <label for="client_id">Client</label>
+            <select id="client_id" name="client_id" onchange="document.getElementById('new-client-wrap').style.display = this.value === '__new__' ? 'block' : 'none';">
+                {% if not clients %}<option value="__new__" selected>New client…</option>{% endif %}
+                {% for c in clients %}
+                <option value="{{ c.id }}" {{ "selected" if c.id == sel else "" }}>{{ c.name }}</option>
+                {% endfor %}
+                {% if clients %}<option value="__new__" {{ "selected" if sel == "__new__" else "" }}>+ New client…</option>{% endif %}
+            </select>
+        </div>
+        <div class="field" id="new-client-wrap" style="display: {{ 'block' if (not clients or sel == '__new__') else 'none' }};">
+            <label for="new_client_name">New client name</label>
+            <input id="new_client_name" name="new_client_name" value="{{ f.new_client_name or '' }}" placeholder="Acme Corp">
+        </div>
+    </div>
+    <div class="field">
+        <label for="title">Project title</label>
+        <input id="title" name="title" value="{{ f.title or '' }}" placeholder="Q3 Board Deck" required autofocus>
+    </div>
+
+    <div class="divider"></div>
+
+    <label style="margin-bottom: var(--space-3);">What should the AI draft from?</label>
+    <input type="hidden" name="source" id="source" value="{{ f.source or 'upload' }}">
+    <div class="tabs" role="tablist" style="margin-bottom: var(--space-4);">
+        <button type="button" class="tab" data-tab="upload" role="tab">Upload a file</button>
+        <button type="button" class="tab" data-tab="brief" role="tab">Write a brief</button>
+        <button type="button" class="tab" data-tab="link" role="tab">Claude link</button>
+    </div>
+
+    <div class="tab-panel" data-panel="upload">
+        <div class="dropzone">
+            <strong style="color: var(--text);">PDF, DOCX, CSV, or HTML</strong>
+            <span>Documents are parsed into a brief and drafted. An HTML deck on an Animated HTML project is kept as an exact clone you edit in place.</span>
+            <input type="file" name="file" accept=".pdf,.docx,.csv,.html,.htm">
+        </div>
+    </div>
+
+    <div class="tab-panel" data-panel="brief">
+        <div class="field">
+            <label for="goals">Goals</label>
+            <textarea id="goals" name="goals" placeholder="What this deliverable needs to accomplish">{{ f.goals or '' }}</textarea>
+        </div>
+        <div class="field">
+            <label for="key_data_points">Key data points</label>
+            <textarea id="key_data_points" name="key_data_points" placeholder="Revenue, growth rate, churn...">{{ f.key_data_points or '' }}</textarea>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label for="business_name">Business name <span class="text-faint" style="font-weight:400;">(defaults to client)</span></label>
+                <input id="business_name" name="business_name" value="{{ f.business_name or '' }}">
+            </div>
+            <div class="field">
+                <label for="notes">Notes <span class="text-faint" style="font-weight:400;">(optional)</span></label>
+                <input id="notes" name="notes" value="{{ f.notes or '' }}">
+            </div>
+        </div>
+        <span class="hint">Leave the brief empty to create the project without drafting yet.</span>
+    </div>
+
+    <div class="tab-panel" data-panel="link">
+        <div class="field">
+            <label for="url">Public claude.ai artifact link</label>
+            <input id="url" type="url" name="url" value="{{ f.url or '' }}" placeholder="https://claude.ai/artifact/...">
+            <span class="hint">Fetched in a headless browser, then drafted. Takes a moment.</span>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Create &amp; draft</button>
+        <a href="/clients" class="btn btn-ghost">Cancel</a>
+    </div>
+</form>
+
+<script>
+(function () {
+    var tabs = document.querySelectorAll(".tab[data-tab]");
+    var panels = document.querySelectorAll(".tab-panel[data-panel]");
+    var source = document.getElementById("source");
+    function activate(name) {
+        source.value = name;
+        tabs.forEach(function (t) { t.classList.toggle("active", t.dataset.tab === name); });
+        panels.forEach(function (p) { p.classList.toggle("active", p.dataset.panel === name); });
+    }
+    tabs.forEach(function (t) { t.addEventListener("click", function () { activate(t.dataset.tab); }); });
+    activate(source.value || "upload");
+})();
+</script>
+{% endblock %}

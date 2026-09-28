@@ -1,19 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Editor - {{ project.title }}{% endblock %}
-{% block main_class %} wide{% endblock %}
+{% block main_class %} wide editor-main{% endblock %}
+{% block sidebar_default_collapsed %}{{ "true" if artifact.raw_html else "false" }}{% endblock %}
 {% block breadcrumb %}
 <a href="/clients">Clients</a><span class="sep">/</span><a href="/projects/{{ project.id }}">{{ project.title }}</a><span class="sep">/</span><span class="current">Editor</span>
 {% endblock %}
 {% block content %}
-<div class="page-head">
-    <div>
-        <div class="eyebrow">Step 3</div>
-        <h1>Editor</h1>
-    </div>
-</div>
-{% include "projects/_stepper.html" with context %}
-
 <div class="editor-toolbar">
+    <div class="editor-toolbar-steps">{% include "projects/_stepper.html" with context %}</div>
     {% if not artifact.raw_html %}
     <div class="view-toggle">
         <a href="?view=form" class="{{ 'active' if editor_view != 'canvas' else '' }}">Form</a>
@@ -112,11 +106,15 @@
 {% endif %}
 
 {% if artifact.raw_html %}
-<p class="raw-hint">
-    Exact clone of the imported HTML. Click any text to edit it in place. Click an image to select it, drag its
-    orange handle to resize, or double-click to replace it. Changes autosave.
-</p>
 <div id="raw-format-bar" class="raw-format-bar">
+    <details class="menu raw-help">
+        <summary class="btn-icon" title="How editing works">?</summary>
+        <div class="menu-panel raw-help-panel">
+            Exact clone of the imported HTML. Click any text to edit it in place. Click an image to select it, drag its
+            orange handle to resize, or double-click to replace it. Changes autosave.
+        </div>
+    </details>
+    <span class="raw-format-sep"></span>
     <select id="rfFont" class="raw-format-select" title="Font family">
         <option value="">Font</option>
         <option value="Arial, Helvetica, sans-serif">Arial</option>
@@ -147,15 +145,16 @@
     <span class="raw-format-sep"></span>
     <button type="button" id="rfBullets" class="btn-icon" title="Bullet list">&#8226;&#8801;</button>
     <button type="button" id="rfClear" class="btn-icon" title="Clear formatting">Tx</button>
-</div>
-<div id="raw-slide-bar" class="raw-slide-bar" style="display:none;">
-    <button type="button" id="rsPrev" class="btn btn-secondary btn-sm" title="Previous slide">&larr;</button>
-    <span id="rsCount" class="mono">1 / 1</span>
-    <button type="button" id="rsNext" class="btn btn-secondary btn-sm" title="Next slide">&rarr;</button>
-    <div id="rsDots" class="raw-slide-dots"></div>
     <span style="flex:1;"></span>
-    <button type="button" id="rsToggle" class="btn btn-secondary btn-sm">Hide slide</button>
-    <button type="button" id="rsBuild" class="btn btn-primary btn-sm">Choose slides</button>
+    <div id="raw-slide-bar" class="raw-slide-bar" style="display:none;">
+        <button type="button" id="rsPrev" class="btn-icon" title="Previous slide">&larr;</button>
+        <span id="rsCount" class="mono">1 / 1</span>
+        <button type="button" id="rsNext" class="btn-icon" title="Next slide">&rarr;</button>
+        <div id="rsDots" class="raw-slide-dots"></div>
+        <span class="raw-format-sep"></span>
+        <button type="button" id="rsToggle" class="btn btn-secondary btn-sm">Hide slide</button>
+        <button type="button" id="rsBuild" class="btn btn-primary btn-sm">Choose slides</button>
+    </div>
 </div>
 <div id="raw-build-overlay" class="raw-build-overlay" style="display:none;">
     <div class="raw-build-panel">
@@ -171,6 +170,19 @@
     </div>
 </div>
 <iframe id="raw-editor-frame" src="/projects/{{ project.id }}/raw-editor" class="raw-editor-frame"></iframe>
+<script>
+// Size the editing frame to whatever is left of the viewport under the toolbars.
+(function () {
+    var frame = document.getElementById("raw-editor-frame");
+    function fit() {
+        var top = frame.getBoundingClientRect().top;
+        frame.style.height = Math.max(360, window.innerHeight - top - 16) + "px";
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    window.addEventListener("load", fit);
+})();
+</script>
 {% elif editor_view == "canvas" %}
 {% include "projects/_canvas.html" %}
 {% else %}

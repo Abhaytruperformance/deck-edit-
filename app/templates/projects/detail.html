@@ -80,14 +80,6 @@
                 <label for="p_title">Title</label>
                 <input id="p_title" name="title" value="{{ project.title }}" required>
             </div>
-            <div class="field">
-                <label for="p_type">Deliverable</label>
-                <select id="p_type" name="deliverable_type">
-                    <option value="pptx" {{ "selected" if project.deliverable_type == "pptx" else "" }}>PowerPoint deck (.pptx)</option>
-                    <option value="xlsx" {{ "selected" if project.deliverable_type == "xlsx" else "" }}>Spreadsheet (.xlsx)</option>
-                    <option value="animated_html" {{ "selected" if project.deliverable_type == "animated_html" else "" }}>Animated HTML page</option>
-                </select>
-            </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-secondary btn-sm">Save changes</button>
             </div>

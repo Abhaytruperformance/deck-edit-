@@ -14,10 +14,10 @@
 
 <p class="page-lead">This is what the AI drafts from. Pick one way to add it. Saving keeps earlier versions rather than overwriting them.</p>
 
-{% set initial_tab = "upload" if upload_error else ("import" if import_error else "form") %}
+{% set initial_tab = "import" if import_error else "upload" %}
 <div class="tabs" role="tablist">
-    <button type="button" class="tab" data-tab="form" role="tab">Fill in a brief</button>
     <button type="button" class="tab" data-tab="upload" role="tab">Upload a file</button>
+    <button type="button" class="tab" data-tab="form" role="tab">Fill in a brief</button>
     <button type="button" class="tab" data-tab="import" role="tab">Import from Claude</button>
 </div>
 
@@ -41,7 +41,8 @@
                 <textarea id="notes" name="notes">{{ latest_input.raw_data.notes if latest_input else '' }}</textarea>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Save input</button>
+                <button type="submit" name="then" value="draft" class="btn btn-primary">Save &amp; generate draft</button>
+                <button type="submit" name="then" value="" class="btn btn-secondary">Save only</button>
                 <a href="/projects/{{ project.id }}" class="btn btn-ghost">Cancel</a>
             </div>
         </form>
@@ -58,13 +59,13 @@
                     {% if project.deliverable_type == "animated_html" %}
                     A saved HTML deck is kept as an exact clone and edited in place with its design intact.
                     {% else %}
-                    Documents are parsed into the same brief as the form. HTML decks keep headings, tables, and images.
+                    Parsed into a brief and drafted straight away. HTML decks keep headings, tables, and images.
                     {% endif %}
                 </span>
                 <input type="file" name="file" accept=".pdf,.docx,.csv,.html,.htm" required>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Upload &amp; continue</button>
+                <button type="submit" class="btn btn-primary">Upload &amp; draft</button>
             </div>
         </form>
     </div>

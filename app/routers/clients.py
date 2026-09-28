@@ -55,7 +55,7 @@ def client_detail(request: Request, client_id: UUID):
 
 
 @router.post("/{client_id}/projects")
-def create_project(client_id: UUID, title: str = Form(...), deliverable_type: DeliverableType = Form(...)):
+def create_project(client_id: UUID, title: str = Form(...), deliverable_type: DeliverableType = Form("animated_html")):
     get_supabase().table("projects").insert(
         {"client_id": str(client_id), "title": title, "deliverable_type": deliverable_type}
     ).execute()

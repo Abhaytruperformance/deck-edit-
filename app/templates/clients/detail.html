@@ -4,7 +4,7 @@
 <a href="/clients">Clients</a><span class="sep">/</span><span class="current">{{ client.name }}</span>
 {% endblock %}
 {% block header_actions %}
-<a href="#new-project" class="btn btn-primary btn-sm">+ New project</a>
+<a href="/projects/new?client_id={{ client.id }}" class="btn btn-primary btn-sm">+ New project</a>
 {% endblock %}
 {% block content %}
 <div class="page-head">
@@ -40,34 +40,18 @@
         {% else %}
         <div class="empty-state">
             <h3>No projects yet</h3>
-            <p>Create the first one on the right. You'll add a brief, draft it with AI, then edit and publish.</p>
+            <p>Start one on the right: name it, add a brief, and get a draft in one step.</p>
         </div>
         {% endif %}
     </div>
 
     <div>
-        <div id="new-project" class="form-card">
-            <div class="eyebrow">Add</div>
-            <h2>New project</h2>
-            <form method="post" action="/clients/{{ client.id }}/projects">
-                <div class="field">
-                    <label for="title">Project title</label>
-                    <input id="title" name="title" placeholder="Q3 Board Deck" required>
-                </div>
-                <div class="field">
-                    <label for="deliverable_type">Deliverable</label>
-                    <select id="deliverable_type" name="deliverable_type">
-                        <option value="pptx">PowerPoint deck (.pptx)</option>
-                        <option value="xlsx">Spreadsheet (.xlsx)</option>
-                        <option value="animated_html">Animated HTML page</option>
-                    </select>
-                    <span class="hint">You can change this later from the project's settings.</span>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Create project</button>
-                </div>
-            </form>
-        </div>
+        <a href="/projects/new?client_id={{ client.id }}" class="tile" style="border-style: dashed; align-items: flex-start;">
+            <div class="eyebrow" style="margin:0;">Start</div>
+            <div class="tile-title">New project</div>
+            <div class="tile-meta">Name it, add a brief or file, and get a first draft in one step.</div>
+            <span class="btn btn-primary btn-sm" style="margin-top: var(--space-2);">+ New project</span>
+        </a>
 
         <details class="disclosure" style="margin-top: var(--space-4);">
             <summary>Client details &amp; settings</summary>
