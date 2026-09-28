@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+supabase
+pydantic-settings
+python-pptx
+openpyxl
+bcrypt
+itsdangerous
+pypdf
+python-docx
+openai
+playwright

@@ -1,0 +1,113 @@
+{# Per-block-type input fields, shared by the form editor (_blocks_list.html)
+   and the canvas editor (_canvas.html) so both stay wired to the exact same
+   field names _parse_content_form() expects - one content path, two skins. #}
+{% macro block_fields(block) %}
+{% if block.type == "title_slide" %}
+    <div class="field" style="max-width:none;"><label>Headline</label><input type="text" name="headline" value="{{ block.content.headline }}"></div>
+    <div class="field" style="max-width:none;"><label>Subhead</label><input type="text" name="subhead" value="{{ block.content.subhead }}"></div>
+
+{% elif block.type == "text_block" %}
+    <div class="field" style="max-width:none;"><label>Heading</label><input type="text" name="heading" value="{{ block.content.heading }}"></div>
+    <div class="field" style="max-width:none;"><label>Body</label><textarea name="body">{{ block.content.body }}</textarea></div>
+
+{% elif block.type == "bullet_list" %}
+    <div class="field" style="max-width:none;"><label>Heading</label><input type="text" name="heading" value="{{ block.content.heading }}"></div>
+    <div class="list-wrap">
+        <label>Items</label>
+        <div class="repeatable-list">
+            {% for item in block.content['items'] %}
+            <div class="repeatable-row">
+                <input type="text" name="item" value="{{ item }}">
+                <button type="button" class="btn-icon danger" onclick="removeRow(this)">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addTextRow(this, 'item')">+ Add bullet</button>
+    </div>
+
+{% elif block.type == "kpi_grid" %}
+    <div class="field" style="max-width:none;"><label>Title</label><input type="text" name="title" value="{{ block.content.title }}"></div>
+    <div class="list-wrap">
+        <label>Metrics</label>
+        <div class="repeatable-list">
+            {% for i in block.content['items'] %}
+            <div class="repeatable-row kpi-row">
+                <input type="text" name="kpi_label" placeholder="Label" value="{{ i.label }}">
+                <input type="number" step="any" name="kpi_value" placeholder="Value" value="{{ i.value }}">
+                <input type="text" name="kpi_unit" placeholder="Unit" value="{{ i.unit }}">
+                <input type="number" step="any" name="kpi_change_pct" placeholder="Change %" value="{{ i.change_pct if i.change_pct is not none else '' }}">
+                <button type="button" class="btn-icon danger" onclick="removeRow(this)">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addKpiRow(this)">+ Add metric</button>
+    </div>
+
+{% elif block.type == "comparison_table" %}
+    <div class="grid-wrap">
+        <label>Table</label>
+        <table class="grid-table" data-grid="table">
+            <thead>
+                <tr>
+                    {% for h in block.content.headers %}<th><input type="text" value="{{ h }}"></th>{% endfor %}
+                    <th class="action-col"><button type="button" class="btn-icon" title="Add column" onclick="addTableCol(this)">+</button></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in block.content.rows %}
+                <tr>
+                    {% for cell in row %}<td><input type="text" value="{{ cell }}"></td>{% endfor %}
+                    <td class="action-col"><button type="button" class="btn-icon danger" title="Remove row" onclick="removeTableRow(this)">&times;</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="display:flex; gap: var(--space-2);">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addTableRow(this)">+ Add row</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="removeTableCol(this)">- Remove column</button>
+        </div>
+    </div>
+    <input type="hidden" name="table_json">
+
+{% elif block.type == "chart" %}
+    <div class="field" style="max-width:none;">
+        <label>Chart type</label>
+        <select name="chart_type">
+            {% for t in ["bar", "line", "pie"] %}
+            <option value="{{ t }}" {{ "selected" if block.content.chart_type == t else "" }}>{{ t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field" style="max-width:none;"><label>Title</label><input type="text" name="title" value="{{ block.content.title }}"></div>
+    <div class="grid-wrap">
+        <label>Data</label>
+        <table class="grid-table" data-grid="chart">
+            <thead>
+                <tr>
+                    <th></th>
+                    {% for l in block.content.labels %}<th><input type="text" class="chart-label" value="{{ l }}"></th>{% endfor %}
+                    <th class="action-col"><button type="button" class="btn-icon" title="Add label" onclick="addChartLabel(this)">+</button></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in block.content.series %}
+                <tr>
+                    <td><input type="text" class="series-name" value="{{ s.name }}"></td>
+                    {% for v in s['values'] %}<td><input type="number" step="any" class="series-value" value="{{ v }}"></td>{% endfor %}
+                    <td class="action-col"><button type="button" class="btn-icon danger" title="Remove series" onclick="removeChartSeries(this)">&times;</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="display:flex; gap: var(--space-2);">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addChartSeries(this)">+ Add series</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="removeChartLabel(this)">- Remove label</button>
+        </div>
+    </div>
+    <input type="hidden" name="chart_json">
+
+{% elif block.type == "image_block" %}
+    <div class="field" style="max-width:none;"><label>Caption</label><input type="text" name="caption" value="{{ block.content.caption }}"></div>
+    <div class="field" style="max-width:none;"><label>Image ref (Supabase Storage path)</label><input type="text" name="image_ref" value="{{ block.content.image_ref }}"></div>
+{% endif %}
+{% endmacro %}

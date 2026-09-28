@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<p><a href="/clients">&larr; All clients</a></p>
+<h1>{{ client.name }}</h1>
+<p class="text-muted">
+    {{ client.contact_email or "" }}{% if client.contact_email and client.contact_phone %} &middot; {% endif %}{{ client.contact_phone or "" }}
+</p>
+{% if client.notes %}<p>{{ client.notes }}</p>{% endif %}
+
+<div class="form-card" style="max-width: 480px; margin-top: var(--space-6);">
+    <h2>New project</h2>
+    <form method="post" action="/clients/{{ client.id }}/projects">
+        <div class="field">
+            <label for="title">Project title</label>
+            <input id="title" name="title" placeholder="Q3 Board Deck" required>
+        </div>
+        <div class="field">
+            <label for="deliverable_type">Deliverable type</label>
+            <select id="deliverable_type" name="deliverable_type">
+                <option value="pptx">PowerPoint (.pptx)</option>
+                <option value="xlsx">Spreadsheet (.xlsx)</option>
+                <option value="animated_html">Animated HTML page</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Create project</button>
+    </form>
+</div>
+
+
+<h2 style="margin-top: var(--space-6);">Projects</h2>
+<p class="text-muted" style="font-size:13px; margin-top:-8px;">Rename, change type, or delete a project from its entry in the sidebar.</p>
+{% if projects %}
+<div class="card-list">
+    {% for p in projects %}
+    <a class="list-row" href="/projects/{{ p.id }}" style="text-decoration:none; color:inherit;">
+        <div>
+            <div class="list-row-title">{{ p.title }}</div>
+            <div class="text-muted mono" style="font-size:12px; margin-top: 2px;">{{ p.deliverable_type }}</div>
+        </div>
+        <span class="badge badge-status-{{ p.status }}">{{ p.status.replace("_", " ") }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No projects yet</h3>
+    <p>Start one above - collect input, then draft with AI.</p>
+</div>
+{% endif %}
+{% endblock %}

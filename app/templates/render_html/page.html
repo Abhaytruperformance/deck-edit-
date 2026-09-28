@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" integrity="sha256-KAM+RJox68w5blvosTtjFSvwMJQoj7WGcDQyGSe84Ic=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" integrity="sha256-rTPC35raimY8IUc1eCj5gNC3ynMe8z6zxuTzJ8OyzaU=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha256-/tanOfjQ8GhxdN5s0UdF/A/HgJFEqxE9IpCKJr8Nf+o=" crossorigin="anonymous"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #0b0d12; color: #f2f2f5; }
+  section { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; padding: 4rem 6vw; opacity: 0; transform: translateY(24px); }
+  section.title { min-height: 100vh; text-align: center; align-items: center; }
+  h1 { font-size: clamp(2rem, 6vw, 4rem); margin: 0 0 0.5rem; }
+  h2 { font-size: clamp(1.4rem, 3vw, 2.2rem); margin: 0 0 1rem; }
+  .subhead { font-size: 1.2rem; opacity: 0.75; }
+  .body-text { font-size: 1.1rem; line-height: 1.6; max-width: 60ch; }
+  ul.bullets { font-size: 1.15rem; line-height: 2; padding-left: 1.5rem; }
+  .kpi-grid { display: flex; flex-wrap: wrap; gap: 2rem; }
+  .kpi { min-width: 160px; }
+  .kpi .value { font-size: 2.2rem; font-weight: 700; }
+  .kpi .change { font-size: 0.95rem; opacity: 0.8; }
+  .kpi .change.up { color: #4ade80; }
+  .kpi .change.down { color: #f87171; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  th, td { text-align: left; padding: 0.6rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  figure { margin: 0; max-width: 900px; }
+  figure img { max-width: 100%; border-radius: 8px; }
+  figcaption { opacity: 0.7; margin-top: 0.5rem; }
+  canvas { max-width: 900px; max-height: 500px; }
+</style>
+</head>
+<body>
+
+{% for block in blocks %}
+{% if block.type == "title_slide" %}
+<section class="title" data-animate>
+    <h1>{{ block.content.headline }}</h1>
+    <p class="subhead">{{ block.content.subhead }}</p>
+</section>
+
+{% elif block.type == "text_block" %}
+<section data-animate>
+    <h2>{{ block.content.heading }}</h2>
+    <p class="body-text">{{ block.content.body }}</p>
+</section>
+
+{% elif block.type == "bullet_list" %}
+<section data-animate>
+    <h2>{{ block.content.heading }}</h2>
+    <ul class="bullets">
+        {% for item in block.content['items'] %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+</section>
+
+{% elif block.type == "kpi_grid" %}
+<section data-animate>
+    <h2>{{ block.content.title }}</h2>
+    <div class="kpi-grid">
+        {% for item in block.content['items'] %}
+        <div class="kpi">
+            <div>{{ item.label }}</div>
+            <div class="value">{{ item.value }} {{ item.unit }}</div>
+            {% if item.change_pct is not none %}
+            <div class="change {{ 'up' if item.change_pct >= 0 else 'down' }}">{{ "%+.1f"|format(item.change_pct) }}%</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% elif block.type == "comparison_table" %}
+<section data-animate>
+    <table>
+        <thead><tr>{% for h in block.content.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% for row in block.content.rows %}
+            <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% elif block.type == "chart" %}
+<section data-animate>
+    <h2>{{ block.content.title }}</h2>
+    <canvas id="chart-{{ block.id }}" data-chart="{{ block._chart_json }}"></canvas>
+</section>
+
+{% elif block.type == "image_block" %}
+<section data-animate>
+    <figure>
+        {% if block._image_url %}<img src="{{ block._image_url }}" alt="{{ block.content.caption }}">{% endif %}
+        <figcaption>{{ block.content.caption }}</figcaption>
+    </figure>
+</section>
+{% endif %}
+{% endfor %}
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+document.querySelectorAll("[data-animate]").forEach((el) => {
+    gsap.to(el, {
+        opacity: 1, y: 0, duration: 0.8, ease: "power2.out",
+        scrollTrigger: { trigger: el, start: "top 80%" },
+    });
+});
+
+const chartColors = ["#60a5fa", "#f87171", "#4ade80", "#fbbf24", "#a78bfa"];
+document.querySelectorAll("canvas[data-chart]").forEach((canvas) => {
+    const cfg = JSON.parse(canvas.dataset.chart);
+    new Chart(canvas, {
+        type: cfg.chart_type === "bar" ? "bar" : cfg.chart_type,
+        data: {
+            labels: cfg.labels,
+            datasets: cfg.series.map((s, i) => ({
+                label: s.name,
+                data: s.values,
+                backgroundColor: cfg.chart_type === "pie" ? chartColors : chartColors[i % chartColors.length],
+                borderColor: chartColors[i % chartColors.length],
+                fill: cfg.chart_type === "line" ? false : true,
+            })),
+        },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#f2f2f5" } } },
+            scales: cfg.chart_type === "pie" ? {} : {
+                x: { ticks: { color: "#f2f2f5" }, grid: { color: "rgba(255,255,255,0.1)" } },
+                y: { ticks: { color: "#f2f2f5" }, grid: { color: "rgba(255,255,255,0.1)" } },
+            },
+        },
+    });
+});
+</script>
+</body>
+</html>

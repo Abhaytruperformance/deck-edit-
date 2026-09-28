@@ -1,0 +1,11 @@
+INFO:     Started server process [20984]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('127.0.INFO:     127.0.0.1:54253 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56011 - "GET /s/a9ai815k HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60301 - "GET /s/a9ai815k HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60301 - "GET /projects/7f0771d2-d38c-46cc-8440-542404ab620a/editor HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60301 - "GET /static/style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60301 - "GET /projects/7f0771d2-d38c-46cc-8440-542404ab620a/raw-editor HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53496 - "GET /projects/7f0771d2-d38c-46cc-8440-542404ab620a/editor HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53496 - "GET /projects/7f0771d2-d38c-46cc-8440-542404ab620a/raw-editor HTTP/1.1" 200 OK

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<h1>Clients</h1>
+
+{% if clients %}
+<div class="card-list" style="margin-bottom: var(--space-6);">
+    {% for c in clients %}
+    <a class="list-row" href="/clients/{{ c.id }}" style="text-decoration:none; color:inherit;">
+        <div>
+            <div class="list-row-title">{{ c.name }}</div>
+            <div class="text-muted" style="font-size:13px;">{{ c.contact_email or "No contact email" }}</div>
+        </div>
+        <span class="text-muted">&rarr;</span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="margin-bottom: var(--space-6);">
+    <h3>No clients yet</h3>
+    <p>Add your first client below to start a project for them.</p>
+</div>
+{% endif %}
+
+<div class="form-card" style="max-width: 480px;">
+    <h2>New client</h2>
+    <form method="post" action="/clients">
+        <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" placeholder="Acme Corp" required>
+        </div>
+        <div class="field">
+            <label for="contact_email">Contact email</label>
+            <input id="contact_email" name="contact_email" type="email" placeholder="jane@acme.com">
+        </div>
+        <div class="field">
+            <label for="contact_phone">Contact phone</label>
+            <input id="contact_phone" name="contact_phone" placeholder="(555) 555-0100">
+        </div>
+        <div class="field">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" placeholder="Anything worth remembering about this client"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Add client</button>
+    </form>
+</div>
+{% endblock %}

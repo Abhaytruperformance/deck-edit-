@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Log in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
+        <div class="form-card" style="width:100%; max-width:360px;">
+            <div class="brand" style="margin-bottom: var(--space-5);">Deliverables</div>
+            {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+            <form method="post" action="/login">
+                <div class="field" style="max-width:none;">
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" required autofocus>
+                </div>
+                <div class="field" style="max-width:none;">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Log in</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }}{% endblock %}
+{% block content %}
+<p><a href="/clients/{{ client.id }}">&larr; {{ client.name }}</a></p>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: var(--space-4);">
+    <h1 style="margin:0;">{{ project.title }}</h1>
+    <span class="badge badge-status-{{ project.status }}">{{ project.status.replace("_", " ") }}</span>
+</div>
+
+{% include "projects/_stepper.html" with context %}
+
+{% if draft_error %}
+<div class="error-banner">Draft generation failed: {{ draft_error }}</div>
+{% endif %}
+
+<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-4);">
+    <h2>Input</h2>
+    {% if latest_input %}
+    <p class="text-muted">Latest input <span class="mono">v{{ latest_input.version }}</span> &mdash; {{ latest_input.raw_data.business_name or "(untitled)" }}</p>
+    {% else %}
+    <p class="text-muted">Nothing collected yet.</p>
+    {% endif %}
+    <a href="/projects/{{ project.id }}/input" class="btn btn-secondary btn-sm">{{ "Edit input" if latest_input else "Add input" }}</a>
+</div>
+
+<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-4);">
+    <h2>AI draft</h2>
+    {% if latest_input %}
+    <p class="text-muted">Generates a fresh block list from the latest input above{% if artifact %} - this replaces the current draft{% endif %}.</p>
+    <form method="post" action="/projects/{{ project.id }}/draft">
+        <button type="submit" class="btn btn-primary">{{ "Regenerate draft" if artifact else "Generate draft" }}</button>
+    </form>
+    {% else %}
+    <p class="text-muted">Add input first.</p>
+    {% endif %}
+</div>
+
+{% if artifact %}
+<div class="card" style="padding: var(--space-5);">
+    <h2>Editor</h2>
+    <p class="text-muted">{{ artifact.blocks|length }} block{{ "s" if artifact.blocks|length != 1 else "" }} in the current draft.</p>
+    <a href="/projects/{{ project.id }}/editor" class="btn btn-primary">Open editor</a>
+</div>
+{% endif %}
+{% endblock %}

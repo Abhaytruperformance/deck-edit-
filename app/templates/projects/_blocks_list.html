@@ -1,0 +1,63 @@
+{% from "projects/_block_fields.html" import block_fields %}
+<div id="blocks-list">
+{% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+
+{% if not artifact.blocks %}
+<div class="empty-state">
+    <h3>No blocks in this draft</h3>
+    <p>Generate an AI draft from the project page to populate the editor.</p>
+</div>
+{% endif %}
+
+{% for block in artifact.blocks %}
+<div class="block-card {{ 'disabled' if not block.enabled else '' }}">
+    <div class="block-card-header">
+        <div class="block-card-header-left">
+            <span class="badge badge-mono">{{ block.type.replace("_", " ") }}</span>
+            <span class="text-faint mono" style="font-size:12px;">{{ block.id }}</span>
+        </div>
+        <div class="block-controls">
+            <form hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/move" hx-target="#blocks-list" hx-swap="outerHTML" style="display:contents;">
+                <input type="hidden" name="direction" value="up">
+                <button type="submit" class="btn-icon" title="Move up" {{ "disabled" if loop.first else "" }}>&uarr;</button>
+            </form>
+            <form hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/move" hx-target="#blocks-list" hx-swap="outerHTML" style="display:contents;">
+                <input type="hidden" name="direction" value="down">
+                <button type="submit" class="btn-icon" title="Move down" {{ "disabled" if loop.last else "" }}>&darr;</button>
+            </form>
+            <label class="switch" title="{{ 'Enabled - included in output' if block.enabled else 'Disabled - skipped at render' }}">
+                <input type="checkbox" hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/toggle" hx-target="#blocks-list" hx-swap="outerHTML" {{ "checked" if block.enabled else "" }}>
+                <span class="track"></span>
+            </label>
+            <button type="button" class="btn-icon danger" title="Delete block"
+                    hx-delete="/projects/{{ project_id }}/blocks/{{ block.id }}"
+                    hx-target="#blocks-list" hx-swap="outerHTML"
+                    hx-confirm="Delete this {{ block.type.replace('_', ' ') }} block? This can't be undone.">&#128465;</button>
+        </div>
+    </div>
+
+    <form class="block-edit-form" hx-post="/projects/{{ project_id }}/blocks/{{ block.id }}/content" hx-target="#blocks-list" hx-swap="outerHTML">
+        {{ block_fields(block) }}
+
+        <div class="block-actions-row">
+            <span></span>
+            <button type="submit" class="btn btn-primary btn-sm">Save block</button>
+        </div>
+    </form>
+</div>
+{% endfor %}
+
+<form hx-post="/projects/{{ project_id }}/blocks" hx-target="#blocks-list" hx-swap="outerHTML"
+      style="display:flex; gap: var(--space-2); align-items:center; margin-top: var(--space-2);">
+    <select name="block_type" style="width:auto; flex:none;">
+        <option value="title_slide">Title slide</option>
+        <option value="text_block">Text block</option>
+        <option value="bullet_list">Bullet list</option>
+        <option value="kpi_grid">KPI grid</option>
+        <option value="comparison_table">Comparison table</option>
+        <option value="chart">Chart</option>
+        <option value="image_block">Image</option>
+    </select>
+    <button type="submit" class="btn btn-secondary btn-sm">+ Add block</button>
+</form>
+</div>

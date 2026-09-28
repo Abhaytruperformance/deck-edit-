@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+{% block title %}Editor - {{ project.title }}{% endblock %}
+{% block main_class %} wide{% endblock %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}">&larr; {{ project.title }}</a></p>
+<h1>Editor</h1>
+{% include "projects/_stepper.html" with context %}
+
+<div class="editor-toolbar">
+    <span class="badge {{ 'badge-status-published' if artifact.current_version_id else 'badge-status-in_review' }}">
+        {{ "Saved" if artifact.current_version_id else "Unsaved changes" }}
+    </span>
+
+    {% if not artifact.raw_html %}
+    <div class="view-toggle">
+        <a href="?view=form" class="{{ 'active' if editor_view != 'canvas' else '' }}">Form view</a>
+        <a href="?view=canvas" class="{{ 'active' if editor_view == 'canvas' else '' }}">Canvas view</a>
+    </div>
+    {% endif %}
+
+    <form method="post" action="/projects/{{ project.id }}/save-version">
+        <button type="submit" class="btn btn-secondary btn-sm">Save Version</button>
+    </form>
+
+    {% if project.status == "draft" %}
+    <form method="post" action="/projects/{{ project.id }}/mark-review">
+        <button type="submit" class="btn btn-secondary btn-sm">Mark as In Review</button>
+    </form>
+    {% endif %}
+
+    <form method="post" action="/projects/{{ project.id }}/publish" style="display:flex; gap: var(--space-2);">
+        <input name="label" placeholder="Client / link name" required style="width:160px;">
+        <input name="password" type="password" placeholder="Optional password" style="width:160px;">
+        <button type="submit" class="btn btn-primary btn-sm">Publish new link</button>
+    </form>
+
+    <div class="export-menu">
+        <a href="/projects/{{ project.id }}/export?format=html" class="btn btn-secondary btn-sm">Export HTML</a>
+        {% if not artifact.raw_html and project.deliverable_type != "animated_html" %}
+        <a href="/projects/{{ project.id }}/export?format={{ project.deliverable_type }}" class="btn btn-secondary btn-sm">Export {{ project.deliverable_type }}</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if shares %}
+<div class="share-list" style="margin-bottom: var(--space-4);">
+    {% for s in shares %}
+    <div class="share-row" style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border);">
+        <div>
+            <strong>{{ s.label or "Untitled link" }}</strong>
+            &middot; <a href="/s/{{ s.slug }}" target="_blank">/s/{{ s.slug }}</a>
+            &middot; v{{ s.version_number or "?" }}
+            &middot; {{ s.view_count }} view{{ "s" if s.view_count != 1 else "" }}
+            {% if s.password_hash %}&middot; password protected{% endif %}
+        </div>
+        <div style="display:flex; gap: var(--space-2); align-items:center;">
+            <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/republish" style="display:flex; gap: var(--space-2);">
+                <input name="password" type="password" placeholder="New password (optional)" style="width:160px;">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Push the current draft's latest version to this link">Republish</button>
+            </form>
+            <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/delete"
+                  onsubmit="return confirm('Delete this link? Anyone with the URL will lose access immediately.');">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Delete this link">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if artifact.raw_html %}
+<p class="text-muted" style="font-size:13px; margin-bottom: var(--space-2);">
+    Exact clone of the imported/uploaded HTML - click anywhere below to edit text in place. Click an image to
+    select it and drag its blue handle to resize, or double-click it to replace it. Autosaves as you go.
+</p>
+<div id="raw-format-bar" class="raw-format-bar">
+    <select id="rfFont" class="raw-format-select" title="Font family">
+        <option value="">Font</option>
+        <option value="Arial, Helvetica, sans-serif">Arial</option>
+        <option value="Georgia, 'Times New Roman', serif">Georgia</option>
+        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+        <option value="Verdana, Geneva, sans-serif">Verdana</option>
+        <option value="'Courier New', Courier, monospace">Courier New</option>
+        <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+    </select>
+    <input id="rfSize" class="raw-format-select raw-format-size" type="number" min="1" max="300" list="rfSizeOptions" placeholder="Size" title="Font size">
+    <datalist id="rfSizeOptions">
+        <option value="10"><option value="12"><option value="14"><option value="16">
+        <option value="18"><option value="24"><option value="32"><option value="48"><option value="64">
+    </datalist>
+    <span class="raw-format-sep"></span>
+    <button type="button" id="rfBold" class="btn-icon" title="Bold"><b>B</b></button>
+    <button type="button" id="rfItalic" class="btn-icon" title="Italic"><i>I</i></button>
+    <button type="button" id="rfUnderline" class="btn-icon" title="Underline"><u>U</u></button>
+    <span class="raw-format-sep"></span>
+    <label class="raw-format-color" title="Text color">
+        A<input type="color" id="rfColor" value="#000000">
+        <span class="raw-format-color-swatch" id="rfColorSwatch" style="background:#000000;"></span>
+    </label>
+    <label class="raw-format-color" title="Highlight color">
+        <span class="raw-format-highlight-icon">&#9645;</span><input type="color" id="rfHighlight" value="#ffff00">
+        <span class="raw-format-color-swatch" id="rfHighlightSwatch" style="background:#ffff00;"></span>
+    </label>
+    <span class="raw-format-sep"></span>
+    <button type="button" id="rfBullets" class="btn-icon" title="Bullet list">&#8226;&#8801;</button>
+    <button type="button" id="rfClear" class="btn-icon" title="Clear formatting">Tx</button>
+</div>
+<div id="raw-slide-bar" class="raw-slide-bar" style="display:none;">
+    <button type="button" id="rsPrev" class="btn btn-secondary btn-sm" title="Previous slide">&larr;</button>
+    <span id="rsCount" class="mono">1 / 1</span>
+    <button type="button" id="rsNext" class="btn btn-secondary btn-sm" title="Next slide">&rarr;</button>
+    <div id="rsDots" class="raw-slide-dots"></div>
+    <span style="flex:1;"></span>
+    <button type="button" id="rsToggle" class="btn btn-secondary btn-sm">Hide slide</button>
+    <button type="button" id="rsBuild" class="btn btn-primary btn-sm">Build</button>
+</div>
+<div id="raw-build-overlay" class="raw-build-overlay" style="display:none;">
+    <div class="raw-build-panel">
+        <div class="raw-build-header">
+            <h3 style="margin:0;">Build the deck</h3>
+            <button type="button" id="rsBuildClose" class="btn-icon" title="Close">&times;</button>
+        </div>
+        <p class="text-muted" style="font-size:13px; margin-top:4px;">
+            Switch off any slide this version doesn't need. Hidden slides stay saved with the deck and
+            won't appear on the published link or in an export.
+        </p>
+        <div id="rsBuildList" class="raw-build-list"></div>
+    </div>
+</div>
+<iframe id="raw-editor-frame" src="/projects/{{ project.id }}/raw-editor" class="raw-editor-frame"></iframe>
+{% elif editor_view == "canvas" %}
+{% include "projects/_canvas.html" %}
+{% else %}
+<div class="editor-layout">
+    <div>
+        {% include "projects/_blocks_list.html" %}
+    </div>
+    <div class="preview-pane">
+        <div class="preview-pane-header">
+            <span>Live preview</span>
+            <span class="text-muted" style="text-transform:none; font-weight:400;">content preview, not exact {{ project.deliverable_type }} layout</span>
+        </div>
+        <iframe id="preview-frame" src="/projects/{{ project.id }}/preview"></iframe>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function reloadPreview() {
+    var frame = document.getElementById("preview-frame");
+    if (frame) frame.src = "/projects/{{ project.id }}/preview?t=" + Date.now();
+}
+document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.detail.target && evt.detail.target.id === "blocks-list") reloadPreview();
+});
+
+// Serialize any grid-shaped block editors (comparison_table, chart) into their
+// hidden JSON field before htmx submits the form. Capture phase so this runs
+// before htmx's own (bubble-phase) submit listener.
+document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.classList.contains("block-edit-form")) return;
+
+    var tableGrid = form.querySelector('[data-grid="table"]');
+    if (tableGrid) {
+        var headers = Array.from(tableGrid.querySelectorAll("thead input")).map(i => i.value);
+        var rows = Array.from(tableGrid.querySelectorAll("tbody tr")).map(tr =>
+            Array.from(tr.querySelectorAll("td input")).map(i => i.value)
+        );
+        form.querySelector('[name="table_json"]').value = JSON.stringify({headers: headers, rows: rows});
+    }
+
+    var chartGrid = form.querySelector('[data-grid="chart"]');
+    if (chartGrid) {
+        var labels = Array.from(chartGrid.querySelectorAll("thead .chart-label")).map(i => i.value);
+        var series = Array.from(chartGrid.querySelectorAll("tbody tr")).map(tr => ({
+            name: tr.querySelector(".series-name").value,
+            values: Array.from(tr.querySelectorAll(".series-value")).map(i => parseFloat(i.value) || 0),
+        }));
+        form.querySelector('[name="chart_json"]').value = JSON.stringify({labels: labels, series: series});
+    }
+}, true);
+
+function removeRow(button) {
+    button.closest(".repeatable-row").remove();
+}
+
+function addTextRow(button, fieldName) {
+    var list = button.closest(".list-wrap").querySelector(".repeatable-list");
+    var row = document.createElement("div");
+    row.className = "repeatable-row";
+    row.innerHTML = '<input type="text" name="' + fieldName + '"><button type="button" class="btn-icon danger" onclick="removeRow(this)">&times;</button>';
+    list.appendChild(row);
+    row.querySelector("input").focus();
+}
+
+function addKpiRow(button) {
+    var list = button.closest(".list-wrap").querySelector(".repeatable-list");
+    var row = document.createElement("div");
+    row.className = "repeatable-row kpi-row";
+    row.innerHTML =
+        '<input type="text" name="kpi_label" placeholder="Label">' +
+        '<input type="number" step="any" name="kpi_value" placeholder="Value">' +
+        '<input type="text" name="kpi_unit" placeholder="Unit">' +
+        '<input type="number" step="any" name="kpi_change_pct" placeholder="Change %">' +
+        '<button type="button" class="btn-icon danger" onclick="removeRow(this)">&times;</button>';
+    list.appendChild(row);
+    row.querySelector("input").focus();
+}
+
+function addTableCol(button) {
+    var table = button.closest("table");
+    table.querySelectorAll("thead tr").forEach(tr => {
+        var th = document.createElement("th");
+        th.innerHTML = '<input type="text" placeholder="Header">';
+        tr.insertBefore(th, tr.lastElementChild);
+    });
+    table.querySelectorAll("tbody tr").forEach(tr => {
+        var td = document.createElement("td");
+        td.innerHTML = '<input type="text">';
+        tr.insertBefore(td, tr.lastElementChild);
+    });
+}
+
+function removeTableCol(button) {
+    var table = button.closest("table");
+    var colCount = table.querySelectorAll("thead th").length - 1;
+    if (colCount <= 1) return;
+    var lastIndex = colCount - 1;
+    table.querySelectorAll("tr").forEach(tr => {
+        if (tr.children[lastIndex]) tr.children[lastIndex].remove();
+    });
+}
+
+function addTableRow(button) {
+    var table = button.closest(".grid-wrap").querySelector("table");
+    var colCount = table.querySelectorAll("thead th").length - 1;
+    var tr = document.createElement("tr");
+    for (var i = 0; i < colCount; i++) tr.innerHTML += "<td><input type='text'></td>";
+    tr.innerHTML += '<td class="action-col"><button type="button" class="btn-icon danger" onclick="removeTableRow(this)">&times;</button></td>';
+    table.querySelector("tbody").appendChild(tr);
+}
+
+function removeTableRow(button) {
+    button.closest("tr").remove();
+}
+
+function addChartLabel(button) {
+    var table = button.closest("table");
+    var headRow = table.querySelector("thead tr");
+    var th = document.createElement("th");
+    th.innerHTML = '<input type="text" class="chart-label" placeholder="Label">';
+    headRow.insertBefore(th, headRow.lastElementChild);
+    table.querySelectorAll("tbody tr").forEach(tr => {
+        var td = document.createElement("td");
+        td.innerHTML = '<input type="number" step="any" class="series-value" value="0">';
+        tr.insertBefore(td, tr.lastElementChild);
+    });
+}
+
+function removeChartLabel(button) {
+    var table = button.closest("table");
+    var colCount = table.querySelectorAll("thead th").length - 2; // minus name col, minus action col
+    if (colCount <= 1) return;
+    var lastIndex = table.querySelectorAll("thead th").length - 2;
+    table.querySelectorAll("tr").forEach(tr => {
+        if (tr.children[lastIndex]) tr.children[lastIndex].remove();
+    });
+}
+
+function addChartSeries(button) {
+    var table = button.closest(".grid-wrap").querySelector("table");
+    var labelCount = table.querySelectorAll("thead .chart-label").length;
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td><input type="text" class="series-name" placeholder="Series name"></td>';
+    for (var i = 0; i < labelCount; i++) tr.innerHTML += '<td><input type="number" step="any" class="series-value" value="0"></td>';
+    tr.innerHTML += '<td class="action-col"><button type="button" class="btn-icon danger" onclick="removeChartSeries(this)">&times;</button></td>';
+    table.querySelector("tbody").appendChild(tr);
+}
+
+function removeChartSeries(button) {
+    button.closest("tr").remove();
+}
+
+// Canvas view: comparison_table/chart use a grid of plain inputs, serialized
+// into table_json/chart_json right before the request goes out - same logic
+// as the capture-phase submit listener above, just also covering the canvas
+// view's blur-triggered (not submit-triggered) htmx requests.
+document.body.addEventListener("htmx:configRequest", function (evt) {
+    var form = evt.detail.elt;
+    if (!(form instanceof HTMLFormElement) || !form.classList.contains("block-edit-form")) return;
+
+    var tableGrid = form.querySelector('[data-grid="table"]');
+    if (tableGrid) {
+        var headers = Array.from(tableGrid.querySelectorAll("thead input")).map(i => i.value);
+        var rows = Array.from(tableGrid.querySelectorAll("tbody tr")).map(tr =>
+            Array.from(tr.querySelectorAll("td input")).map(i => i.value)
+        );
+        evt.detail.parameters["table_json"] = JSON.stringify({headers: headers, rows: rows});
+    }
+
+    var chartGrid = form.querySelector('[data-grid="chart"]');
+    if (chartGrid) {
+        var labels = Array.from(chartGrid.querySelectorAll("thead .chart-label")).map(i => i.value);
+        var series = Array.from(chartGrid.querySelectorAll("tbody tr")).map(tr => ({
+            name: tr.querySelector(".series-name").value,
+            values: Array.from(tr.querySelectorAll(".series-value")).map(i => parseFloat(i.value) || 0),
+        }));
+        evt.detail.parameters["chart_json"] = JSON.stringify({labels: labels, series: series});
+    }
+});
+
+// Canvas view: drag-to-reorder. Reuses the exact same /move endpoint the
+// form view's up/down buttons call - just fires it (direction-swap) once per
+// position moved, then swaps in whatever partial the last call returned.
+(function () {
+    var list = document.getElementById("canvas-list");
+    if (!list) return;
+    var dragged = null;
+
+    list.addEventListener("dragstart", function (e) {
+        dragged = e.target.closest(".canvas-card");
+    });
+    list.addEventListener("dragover", function (e) { e.preventDefault(); });
+    list.addEventListener("drop", async function (e) {
+        e.preventDefault();
+        var target = e.target.closest(".canvas-card");
+        if (!dragged || !target || target === dragged) { dragged = null; return; }
+
+        var cards = Array.from(list.querySelectorAll(".canvas-card"));
+        var from = cards.indexOf(dragged), to = cards.indexOf(target);
+        var blockId = dragged.dataset.blockId;
+        var direction = to > from ? "down" : "up";
+        var url = "/projects/{{ project.id }}/blocks/" + blockId + "/move";
+
+        var resp;
+        for (var i = 0; i < Math.abs(to - from); i++) {
+            resp = await fetch(url, {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: "direction=" + direction,
+            });
+        }
+        dragged = null;
+        if (!resp) return;
+        var wrap = document.createElement("div");
+        wrap.innerHTML = await resp.text();
+        var fresh = wrap.querySelector("#canvas-list");
+        if (fresh) list.replaceWith(fresh);
+    });
+})();
+
+// Raw-HTML-clone editor: slide-level controls. The iframe's own injected
+// script (see app/claude_artifact.py) detects slide elements and owns the
+// actual DOM state; this side just sends commands and renders whatever
+// state it reports back, so it stays a no-op on non-deck uploads (no
+// slideState message ever arrives, so the bar never appears).
+(function () {
+    var frame = document.getElementById("raw-editor-frame");
+    if (!frame) return;
+    var bar = document.getElementById("raw-slide-bar");
+    var countEl = document.getElementById("rsCount");
+    var dotsEl = document.getElementById("rsDots");
+    var toggleBtn = document.getElementById("rsToggle");
+    var overlay = document.getElementById("raw-build-overlay");
+    var buildList = document.getElementById("rsBuildList");
+    var state = {index: 0, total: 0, hidden: false, list: []};
+
+    function send(cmd, extra) {
+        var msg = Object.assign({source: "rawEditorHost", cmd: cmd}, extra || {});
+        frame.contentWindow.postMessage(msg, "*");
+    }
+
+    function renderDots() {
+        dotsEl.innerHTML = "";
+        for (var i = 0; i < state.total; i++) {
+            var d = document.createElement("i");
+            d.className = "raw-slide-dot" + (i === state.index ? " on" : "");
+            d.title = "Slide " + (i + 1);
+            d.addEventListener("click", (function (idx) { return function () { send("goto", {i: idx}); }; })(i));
+            dotsEl.appendChild(d);
+        }
+    }
+
+    // "Build" panel: every slide at once, with a switch to include/exclude
+    // it and a link to jump straight to it - the platform-level, persisted
+    // equivalent of a deck's own in-page module toggles (see claude_artifact.py).
+    function renderBuildList() {
+        buildList.innerHTML = "";
+        state.list.forEach(function (row) {
+            var item = document.createElement("div");
+            item.className = "raw-build-row";
+            var label = row.label || ("Slide " + (row.index + 1));
+            item.innerHTML =
+                '<button type="button" class="raw-build-goto" title="Jump to this slide">' +
+                    "Slide " + (row.index + 1) + " &middot; " + label +
+                "</button>" +
+                '<label class="switch" title="Included in the published deck and export">' +
+                    '<input type="checkbox" ' + (row.hidden ? "" : "checked") + ">" +
+                    '<span class="track"></span>' +
+                "</label>";
+            item.querySelector(".raw-build-goto").addEventListener("click", function () {
+                send("goto", {i: row.index}); overlay.style.display = "none";
+            });
+            item.querySelector("input").addEventListener("change", function () {
+                send("toggle", {i: row.index});
+            });
+            buildList.appendChild(item);
+        });
+    }
+
+    window.addEventListener("message", function (e) {
+        var m = e.data;
+        if (!m || m.source !== "rawEditor" || m.type !== "slideState") return;
+        state = {index: m.index, total: m.total, hidden: m.hidden, list: m.list || []};
+        bar.style.display = "flex";
+        countEl.textContent = (state.index + 1) + " / " + state.total;
+        toggleBtn.textContent = state.hidden ? "Show slide" : "Hide slide";
+        renderDots();
+        if (overlay.style.display !== "none") renderBuildList();
+    });
+
+    document.getElementById("rsPrev").addEventListener("click", function () { send("goto", {i: state.index - 1}); });
+    document.getElementById("rsNext").addEventListener("click", function () { send("goto", {i: state.index + 1}); });
+    toggleBtn.addEventListener("click", function () { send("toggle"); });
+    document.getElementById("rsBuild").addEventListener("click", function () {
+        renderBuildList();
+        overlay.style.display = "flex";
+    });
+    document.getElementById("rsBuildClose").addEventListener("click", function () { overlay.style.display = "none"; });
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.style.display = "none"; });
+
+    // Formatting toolbar: plain document.execCommand() calls, run inside the
+    // iframe (see the 'format' handler in claude_artifact.py's injected
+    // script) since a selection only means something in the document it was
+    // made in. A button's mousedown (not click) is what normally shifts
+    // focus/collapses the iframe's text selection before the click even
+    // fires - preventing default on mousedown is the standard fix, and
+    // leaves the click free to fire normally afterward.
+    function preventFocusSteal(el) {
+        el.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    }
+    ["rfBold", "rfItalic", "rfUnderline", "rfBullets", "rfClear"]
+        .forEach(function (id) { preventFocusSteal(document.getElementById(id)); });
+
+    document.getElementById("rfBold").addEventListener("click", function () { send("format", {action: "bold"}); });
+    document.getElementById("rfItalic").addEventListener("click", function () { send("format", {action: "italic"}); });
+    document.getElementById("rfUnderline").addEventListener("click", function () { send("format", {action: "underline"}); });
+    document.getElementById("rfBullets").addEventListener("click", function () { send("format", {action: "insertUnorderedList"}); });
+    document.getElementById("rfClear").addEventListener("click", function () { send("format", {action: "removeFormat"}); });
+    document.getElementById("rfFont").addEventListener("change", function () {
+        if (this.value) send("format", {action: "fontName", value: this.value});
+    });
+    document.getElementById("rfSize").addEventListener("change", function () {
+        if (this.value) send("format", {action: "fontSizePx", value: this.value});
+    });
+    var rfColorSwatch = document.getElementById("rfColorSwatch");
+    var rfHighlightSwatch = document.getElementById("rfHighlightSwatch");
+    document.getElementById("rfColor").addEventListener("input", function () {
+        rfColorSwatch.style.background = this.value;
+        send("format", {action: "foreColor", value: this.value});
+    });
+    document.getElementById("rfHighlight").addEventListener("input", function () {
+        rfHighlightSwatch.style.background = this.value;
+        send("format", {action: "hiliteColor", value: this.value});
+    });
+
+    // Reflects the iframe's own reported selection state (see
+    // reportFormatState in claude_artifact.py) back into the toolbar, so it
+    // shows what's actually selected instead of always looking blank -
+    // matching how a real editor's toolbar behaves.
+    var rfFont = document.getElementById("rfFont");
+    var rfSize = document.getElementById("rfSize");
+    var rfColor = document.getElementById("rfColor");
+    var rfHighlight = document.getElementById("rfHighlight");
+    var rfBold = document.getElementById("rfBold");
+    var rfItalic = document.getElementById("rfItalic");
+    var rfUnderline = document.getElementById("rfUnderline");
+    window.addEventListener("message", function (e) {
+        var m = e.data;
+        if (!m || m.source !== "rawEditor" || m.type !== "formatState") return;
+        if (document.activeElement === rfFont || document.activeElement === rfSize) return;
+        var primary = (m.fontFamily || "").split(",")[0].replace(/['"]/g, "").trim().toLowerCase();
+        var match = Array.from(rfFont.options).find(function (o) {
+            return o.value && o.value.split(",")[0].replace(/['"]/g, "").trim().toLowerCase() === primary;
+        });
+        rfFont.value = match ? match.value : "";
+        rfSize.value = m.fontSize || "";
+        if (m.color) { rfColor.value = m.color; rfColorSwatch.style.background = m.color; }
+        if (m.backgroundColor) { rfHighlight.value = m.backgroundColor; rfHighlightSwatch.style.background = m.backgroundColor; }
+        rfBold.classList.toggle("active", !!m.bold);
+        rfItalic.classList.toggle("active", !!m.italic);
+        rfUnderline.classList.toggle("active", !!m.underline);
+    });
+})();
+</script>
+{% endblock %}
