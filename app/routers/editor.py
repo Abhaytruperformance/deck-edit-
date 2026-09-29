@@ -8,10 +8,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from pydantic import TypeAdapter, ValidationError
 
-from app.assets import style_css_version
 from app.auth import current_user, current_user_email
 from app.claude_artifact import (
     dedupe_slides_if_needed,
@@ -25,11 +23,10 @@ from app.renderers import html as html_renderer
 from app.renderers import pptx as pptx_renderer
 from app.renderers import xlsx as xlsx_renderer
 from app.scoping import get_project_or_404
+from app.templates import templates
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["editor"], dependencies=[Depends(current_user)])
-templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
-templates.env.globals["style_v"] = style_css_version
 templates.env.globals["current_user_email"] = current_user_email
 
 _block_adapter = TypeAdapter(Block)

@@ -2,10 +2,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.ai.draft import DraftError, generate_draft
-from app.assets import style_css_version
 from app.auth import current_user, current_user_email, current_workspace_id
 from app.claude_artifact import (
     ImportError_,
@@ -18,11 +16,10 @@ from app.db import get_supabase, sidebar_clients
 from app.input_parsing import parse_upload
 from app.models.schemas import DeliverableType
 from app.scoping import get_project_or_404
+from app.templates import templates
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(current_user)])
-templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
-templates.env.globals["style_v"] = style_css_version
 templates.env.globals["current_user_email"] = current_user_email
 
 

@@ -11,10 +11,8 @@ from uuid import UUID
 import bcrypt
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from app.assets import style_css_version
 from app.auth import current_user, current_user_email
 from app.config import settings
 from app.db import get_supabase, sidebar_clients
@@ -23,11 +21,10 @@ from app.renderers import pptx as pptx_renderer
 from app.renderers import xlsx as xlsx_renderer
 from app.routers.editor import _create_version, _get_artifact_or_404
 from app.scoping import get_project_or_404
+from app.templates import templates
 
 router = APIRouter(tags=["publish"])
-templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
-templates.env.globals["style_v"] = style_css_version
 templates.env.globals["current_user_email"] = current_user_email
 
 _share_serializer = URLSafeTimedSerializer(settings.session_secret, salt="share-access")

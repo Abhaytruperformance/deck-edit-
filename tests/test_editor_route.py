@@ -23,6 +23,7 @@ from starlette.testclient import TestClient  # noqa: E402
 from tests.fake_supabase import FakeSupabase  # noqa: E402
 
 import app.auth as auth  # noqa: E402
+import app.main as main_module  # noqa: E402
 import app.routers.clients as clients_router  # noqa: E402
 import app.routers.editor as editor_router  # noqa: E402
 import app.routers.projects as projects_router  # noqa: E402
@@ -30,7 +31,13 @@ import app.routers.publish as publish_router  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
 
 db = FakeSupabase()
-for module in (clients_router, editor_router, projects_router, publish_router):
+# All five modules register the sidebar_clients/current_user_email Jinja
+# globals onto the one shared environment (app/templates.py) - whichever
+# registers last wins for every page, not just its own routes, since it's
+# now a single dict key. That's main_module (it imports the routers, so its
+# own registration runs after theirs) - every module that touches
+# get_supabase needs patching here, not just the four routers' own queries.
+for module in (main_module, clients_router, editor_router, projects_router, publish_router):
     module.get_supabase = lambda: db
 
 

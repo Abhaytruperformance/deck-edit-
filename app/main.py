@@ -1,12 +1,11 @@
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
-from app.assets import style_css_version
 from app.auth import COOKIE_NAME, MAX_AGE, current_user, current_user_email, sign_in, sign_up
 from app.db import current_workspace_info, get_supabase, sidebar_clients
 from app.routers import clients, editor, projects, publish
+from app.templates import templates
 
 app = FastAPI(title="Client Deliverables Platform")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -14,8 +13,6 @@ app.include_router(clients.router)
 app.include_router(projects.router)
 app.include_router(editor.router)
 app.include_router(publish.router)
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["style_v"] = style_css_version
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
 templates.env.globals["current_user_email"] = current_user_email
 

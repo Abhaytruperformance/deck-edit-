@@ -41,6 +41,7 @@
             </span>
         </div>
         <div class="share-row-actions">
+            <button type="button" class="btn btn-secondary btn-sm copy-link-btn" data-slug="{{ s.slug }}" title="Copy this link">Copy link</button>
             <details class="menu">
                 <summary class="btn btn-secondary btn-sm" title="Push the current draft's latest version to this link">Republish &#9662;</summary>
                 <div class="menu-panel menu-panel-form">
@@ -77,6 +78,17 @@ document.addEventListener("click", function (e) {
 });
 document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") document.querySelectorAll("details.menu[open]").forEach(function (d) { d.removeAttribute("open"); });
+});
+
+document.querySelectorAll(".copy-link-btn").forEach(function (btn) {
+    var original = btn.textContent;
+    btn.addEventListener("click", function () {
+        var url = window.location.origin + "/s/" + btn.dataset.slug;
+        navigator.clipboard.writeText(url).then(function () {
+            btn.textContent = "Copied";
+            setTimeout(function () { btn.textContent = original; }, 1500);
+        });
+    });
 });
 </script>
 {% endblock %}
