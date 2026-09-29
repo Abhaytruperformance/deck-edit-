@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ style_v() }}">
     <script>
     // Apply the remembered sidebar state before first paint so it doesn't flash open.
     (function () {
@@ -78,11 +78,12 @@
 
         <div class="sidebar-footer">
             <div class="sidebar-footer-row">
-                <span class="sidebar-user">Signed in</span>
+                <span class="sidebar-user">{{ current_user_email() }}</span>
                 <form method="post" action="/logout">
                     <button type="submit" class="btn-ghost-dark">Log out</button>
                 </form>
             </div>
+            <a href="/settings" class="sidebar-add-project" style="display:block; margin-top: 4px;">Invite teammates</a>
         </div>
     </aside>
     <div class="app-shell-body">

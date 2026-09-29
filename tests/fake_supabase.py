@@ -102,9 +102,41 @@ class _Query:
         return _Result(rows)
 
 
+class _FakeUser:
+    def __init__(self, id: str):
+        self.id = id
+
+
+class _FakeAuthResult:
+    def __init__(self, user_id: str):
+        self.user = _FakeUser(user_id)
+
+
+class _FakeAuth:
+    """Just enough of supabase-py's .auth to drive app.auth.sign_up()/sign_in()
+    (workspace creation/joining logic) without a real Supabase project -
+    doesn't validate passwords, that's Supabase's own concern, not ours."""
+
+    def __init__(self):
+        self._users: dict[str, str] = {}  # email -> user id
+
+    def sign_up(self, credentials: dict) -> _FakeAuthResult:
+        email = credentials["email"]
+        user_id = self._users.get(email) or str(uuid.uuid4())
+        self._users[email] = user_id
+        return _FakeAuthResult(user_id)
+
+    def sign_in_with_password(self, credentials: dict) -> _FakeAuthResult:
+        email = credentials["email"]
+        if email not in self._users:
+            raise ValueError("invalid credentials")
+        return _FakeAuthResult(self._users[email])
+
+
 class FakeSupabase:
     def __init__(self):
         self._tables: dict[str, list[dict]] = {}
+        self.auth = _FakeAuth()
 
     def table(self, name: str) -> _Query:
         return _Query(self._tables.setdefault(name, []), name)

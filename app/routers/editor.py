@@ -11,7 +11,8 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import TypeAdapter, ValidationError
 
-from app.auth import current_user
+from app.assets import style_css_version
+from app.auth import current_user, current_user_email
 from app.claude_artifact import (
     dedupe_slides_if_needed,
     inject_edit_script,
@@ -23,10 +24,13 @@ from app.models.blocks import Block
 from app.renderers import html as html_renderer
 from app.renderers import pptx as pptx_renderer
 from app.renderers import xlsx as xlsx_renderer
+from app.scoping import get_project_or_404
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["editor"], dependencies=[Depends(current_user)])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
+templates.env.globals["style_v"] = style_css_version
+templates.env.globals["current_user_email"] = current_user_email
 
 _block_adapter = TypeAdapter(Block)
 
@@ -45,6 +49,10 @@ _DEFAULT_CONTENT = {
 
 
 def _get_artifact_or_404(db, project_id: UUID) -> dict:
+    """Every route below reaches its artifact through here - the workspace
+    ownership check happens once, in get_project_or_404, rather than being
+    something every single route has to remember to do itself."""
+    get_project_or_404(db, project_id)
     rows = db.table("artifacts").select("*").eq("project_id", str(project_id)).limit(1).execute().data
     if not rows:
         raise HTTPException(404, "No artifact for this project yet - generate a draft first")
@@ -129,7 +137,7 @@ def _parse_content_form(block_type: str, form) -> dict:
 @router.get("/editor")
 def editor_page(request: Request, project_id: UUID, view: str | None = None):
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     artifact = _get_artifact_or_404(db, project_id)
 
     # ?view=... (an explicit toggle click, or a redirect from importing a
@@ -227,7 +235,7 @@ def export_draft(project_id: UUID, format: str = "html"):
         raise HTTPException(400, f"unknown export format: {format}")
 
     db = get_supabase()
-    project = db.table("projects").select("title").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     artifact = _get_artifact_or_404(db, project_id)
 
     if artifact.get("raw_html") and format == "html":
@@ -389,7 +397,7 @@ def _create_version(db, artifact: dict) -> dict:
 @router.post("/mark-review")
 def mark_review(project_id: UUID):
     db = get_supabase()
-    project = db.table("projects").select("status").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     if project["status"] == "draft":
         db.table("projects").update({"status": "in_review"}).eq("id", str(project_id)).execute()
     return RedirectResponse(f"/projects/{project_id}", status_code=303)

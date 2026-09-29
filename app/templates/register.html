@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register · Tru Performance Deliverables</title>
+    <link rel="icon" type="image/png" href="/static/tru-logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v={{ style_v() }}">
+</head>
+<body>
+    <div class="auth-shell">
+        {% include "_auth_hero.html" %}
+        <div class="auth-form-side">
+            <div class="auth-card">
+                <img class="mobile-logo" src="/static/tru-logo.png" alt="Tru Performance">
+                <h1 style="margin-bottom: var(--space-1);">Create an account</h1>
+                <p class="text-muted" style="margin-bottom: var(--space-5);">
+                    {% if invite_code %}You're joining an existing workspace.{% else %}Starts your own workspace - invite teammates once you're in.{% endif %}
+                </p>
+                {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+                <form method="post" action="/register" class="form-card">
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="email" required autofocus autocomplete="email" value="{{ email or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <input id="password" name="password" type="password" required autocomplete="new-password" minlength="6">
+                    </div>
+                    {% if not invite_code %}
+                    <div class="field">
+                        <label for="workspace_name">Workspace name <span class="text-faint" style="font-weight:400;">(optional)</span></label>
+                        <input id="workspace_name" name="workspace_name" placeholder="e.g. Acme Agency" value="{{ workspace_name or '' }}">
+                    </div>
+                    {% endif %}
+                    <div class="field">
+                        <label for="invite_code">Invite code <span class="text-faint" style="font-weight:400;">(optional - leave blank to start a new workspace)</span></label>
+                        <input id="invite_code" name="invite_code" placeholder="Paste an invite code" value="{{ invite_code or '' }}">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-block">Create account</button>
+                    </div>
+                </form>
+                <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

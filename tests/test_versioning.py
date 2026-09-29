@@ -15,6 +15,7 @@ os.environ.setdefault("SUPABASE_KEY", "dummy")
 
 from tests.fake_supabase import FakeSupabase  # noqa: E402
 
+import app.auth as auth  # noqa: E402
 import app.routers.editor as editor  # noqa: E402
 import app.routers.publish as publish  # noqa: E402
 
@@ -23,10 +24,10 @@ def make_db():
     return FakeSupabase()
 
 
-def seed_project_and_artifact(db):
+def seed_project_and_artifact(db, workspace_id):
     project_id = str(uuid.uuid4())
     db.table("projects").insert(
-        {"id": project_id, "title": "Acme Q3", "deliverable_type": "pptx", "status": "draft"}
+        {"id": project_id, "title": "Acme Q3", "deliverable_type": "pptx", "status": "draft", "workspace_id": workspace_id}
     ).execute()
     artifact = db.table("artifacts").insert(
         {"id": str(uuid.uuid4()), "project_id": project_id, "blocks": [{"id": "s1", "type": "text_block",
@@ -48,7 +49,14 @@ def main():
     editor.get_supabase = lambda: db
     publish.get_supabase = lambda: db
 
-    project_id, artifact = seed_project_and_artifact(db)
+    # Every route funnels ownership checks through app.scoping, which reads
+    # the current workspace from this contextvar - current_user() sets it
+    # from the session cookie on a real request; here we set it directly,
+    # same as tests/test_editor_route.py does via a crafted cookie.
+    workspace_id = str(uuid.uuid4())
+    auth._session_ctx.set({"email": "test@example.com", "workspace_id": workspace_id})
+
+    project_id, artifact = seed_project_and_artifact(db, workspace_id)
 
     # 1. Mark as In Review is manual and only fires from draft.
     editor.mark_review(project_id)
@@ -115,6 +123,19 @@ def main():
     assert len(all_shares) == 2, "publish() must always create a new share, never overwrite an existing one"
     first_share_after = next(s for s in all_shares if s["id"] == share["id"])
     assert first_share_after["published_version_id"] == version2["id"], "a second publish must not move the first link's pointer"
+
+    # 10. Workspace isolation: switching to a DIFFERENT workspace must 404 on
+    #     this exact project - the whole point of app.scoping (see
+    #     migrations/006_workspaces.sql). Not a coincidental pass: both this
+    #     project's workspace_id and the contextvar are real, distinct UUIDs.
+    from fastapi import HTTPException
+
+    auth._session_ctx.set({"email": "other@example.com", "workspace_id": str(uuid.uuid4())})
+    try:
+        editor._get_artifact_or_404(db, project_id)
+        raise AssertionError("a different workspace must not see this project's artifact")
+    except HTTPException as e:
+        assert e.status_code == 404
 
     print("OK: versioning + publish + status state machine hold under the acceptance-test invariants")
 

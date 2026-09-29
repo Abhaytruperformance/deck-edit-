@@ -43,18 +43,21 @@ def main():
     resp = client.get("/login")
     assert resp.status_code == 200
 
-    cookie_value = auth._serializer.dumps({"email": "test@example.com"})
+    workspace_id = str(uuid.uuid4())
+    cookie_value = auth._serializer.dumps({"email": "test@example.com", "workspace_id": workspace_id})
     client.cookies.set(auth.COOKIE_NAME, cookie_value)
 
     client_id = str(uuid.uuid4())
-    db.table("clients").insert({"id": client_id, "name": "Acme", "created_at": "2026-01-01T00:00:00Z"}).execute()
+    db.table("clients").insert(
+        {"id": client_id, "name": "Acme", "workspace_id": workspace_id, "created_at": "2026-01-01T00:00:00Z"}
+    ).execute()
     assert client.get("/clients").status_code == 200
     assert client.get(f"/clients/{client_id}").status_code == 200
 
     project_id = str(uuid.uuid4())
     db.table("projects").insert(
         {"id": project_id, "client_id": client_id, "title": "Q3 Deck", "deliverable_type": "pptx",
-         "status": "draft", "created_at": "2026-01-01T00:00:00Z"}
+         "status": "draft", "workspace_id": workspace_id, "created_at": "2026-01-01T00:00:00Z"}
     ).execute()
     assert client.get(f"/projects/{project_id}").status_code == 200
     assert client.get(f"/projects/{project_id}/input").status_code == 200
@@ -200,7 +203,7 @@ def main():
     project2_id = str(uuid.uuid4())
     db.table("projects").insert(
         {"id": project2_id, "client_id": client_id, "title": "Secret Deck", "deliverable_type": "pptx",
-         "status": "draft", "created_at": "2026-01-01T00:00:00Z"}
+         "status": "draft", "workspace_id": workspace_id, "created_at": "2026-01-01T00:00:00Z"}
     ).execute()
     artifact2_id = str(uuid.uuid4())
     db.table("artifacts").insert(
@@ -267,6 +270,17 @@ def main():
     assert resp.status_code == 303 and resp.headers["location"] == "/clients", resp.headers
     remaining_clients = db.table("clients").select("*").eq("id", client_id).execute().data
     assert remaining_clients == []
+
+    # Workspace isolation, exercised through the real HTTP layer (not just a
+    # direct function call): a project seeded under a DIFFERENT workspace is
+    # a 404 for this logged-in session, even though the row genuinely exists.
+    other_project_id = str(uuid.uuid4())
+    db.table("projects").insert(
+        {"id": other_project_id, "client_id": client_id, "title": "Not Yours", "deliverable_type": "pptx",
+         "status": "draft", "workspace_id": str(uuid.uuid4()), "created_at": "2026-01-01T00:00:00Z"}
+    ).execute()
+    resp = client.get(f"/projects/{other_project_id}")
+    assert resp.status_code == 404, resp.status_code
 
     print("OK: every page-rendering route (auth, clients, projects, editor, publish, share) renders through the real ASGI app")
 

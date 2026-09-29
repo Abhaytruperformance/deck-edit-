@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block breadcrumb %}<span class="current">Settings</span>{% endblock %}
+{% block content %}
+<h1>{{ workspace.name }}</h1>
+<p class="page-lead">Invite teammates to this workspace - anyone with the link below can join and will see the same clients and projects.</p>
+
+<div class="card card-pad" style="margin-bottom: var(--space-4); max-width: 560px;">
+    <label for="invite_url">Invite link</label>
+    <div style="display:flex; gap: var(--space-2);">
+        <input id="invite_url" readonly value="{{ invite_url }}" style="font-family: var(--font-mono); font-size:13px;">
+        <button type="button" class="btn btn-secondary btn-sm" id="copy-invite">Copy</button>
+    </div>
+    <span class="hint">Anyone who registers with this link joins {{ workspace.name }} automatically - no approval step.</span>
+</div>
+
+<div class="card" style="max-width:560px;">
+    <div class="share-panel-head">Team <span class="badge">{{ workspace.members|length }}</span></div>
+    {% for m in workspace.members %}
+    <div class="share-row">
+        <div class="share-row-main">
+            <span class="share-row-label">{{ m.email }}</span>
+            <span class="share-row-meta">{{ m.role }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.getElementById("copy-invite").addEventListener("click", function () {
+    var input = document.getElementById("invite_url");
+    navigator.clipboard.writeText(input.value).then(() => {
+        var btn = document.getElementById("copy-invite");
+        var original = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = original; }, 1500);
+    });
+});
+</script>
+{% endblock %}

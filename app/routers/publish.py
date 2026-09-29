@@ -14,17 +14,21 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from app.auth import current_user
+from app.assets import style_css_version
+from app.auth import current_user, current_user_email
 from app.config import settings
 from app.db import get_supabase, sidebar_clients
 from app.renderers import html as html_renderer
 from app.renderers import pptx as pptx_renderer
 from app.renderers import xlsx as xlsx_renderer
 from app.routers.editor import _create_version, _get_artifact_or_404
+from app.scoping import get_project_or_404
 
 router = APIRouter(tags=["publish"])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
+templates.env.globals["style_v"] = style_css_version
+templates.env.globals["current_user_email"] = current_user_email
 
 _share_serializer = URLSafeTimedSerializer(settings.session_secret, salt="share-access")
 _SHARE_COOKIE_MAX_AGE = 60 * 60 * 24  # 1 day
@@ -81,7 +85,7 @@ def publish_page(request: Request, project_id: UUID):
     one (republish/delete) in a single place, separate from the Edit step so
     the editor's own slide stage isn't competing with this list for space."""
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     artifact = _get_artifact_or_404(db, project_id)
     shares = _shares_with_versions(db, artifact["id"])
     return templates.TemplateResponse(

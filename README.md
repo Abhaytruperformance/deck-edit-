@@ -10,8 +10,9 @@ shareable (optionally password-protected) link.
 2. In the SQL editor, run [migrations/001_init.sql](migrations/001_init.sql), then
    [002_claude_artifact_input.sql](migrations/002_claude_artifact_input.sql),
    [003_html_upload_input.sql](migrations/003_html_upload_input.sql),
-   [004_raw_html_artifacts.sql](migrations/004_raw_html_artifacts.sql), and
-   [005_share_labels.sql](migrations/005_share_labels.sql), in order.
+   [004_raw_html_artifacts.sql](migrations/004_raw_html_artifacts.sql),
+   [005_share_labels.sql](migrations/005_share_labels.sql), and
+   [006_workspaces.sql](migrations/006_workspaces.sql), in order.
 3. In Supabase Storage, create a **public** bucket named `deliverable-assets`.
    This is where already-uploaded images live; `image_block.image_ref` is a
    path into it. The AI never invents these - see the Artifact Contract note
@@ -131,6 +132,15 @@ All phases from TECHNICAL.md are implemented end to end:
   rename/delete for both and quick-add for new clients/projects. Delete
   cascades through the existing FK chain (`migrations/001_init.sql`), no
   manual cleanup code.
+- **Multi-tenant workspaces** (`migrations/006_workspaces.sql`) — public
+  registration (`/register`) creates a new isolated workspace per signup,
+  or joins an existing one via a shareable invite code (shown on
+  `/settings`, alongside the current team list). Every client/project
+  belongs to exactly one workspace; `app/scoping.py`'s scoped lookups keep
+  one workspace's data invisible to another's, enforced in the app layer
+  since this runs without Postgres RLS. See TECHNICAL.md's "Workspaces"
+  section for the enforcement mechanism and a real footgun it took to get
+  right (sync-dependency contextvars silently not propagating over HTTP).
 
 ## Known simplifications (marked `ponytail:` in the code)
 
@@ -157,3 +167,8 @@ All phases from TECHNICAL.md are implemented end to end:
   match if the selection's computed value matches one of the small preset
   list - a font outside that list just shows blank rather than "detecting"
   an arbitrary value, since the control is a fixed `<select>`, not free text.
+- A workspace's invite code never expires or rotates, and `workspace_members.role`
+  ("owner" vs "member") is informational only - every member has identical
+  permissions, no actual role-gated actions exist yet. Add an expiry/
+  rotate-code action and real permission checks if a workspace ever needs
+  to revoke a leaked invite link or restrict what a member can do.

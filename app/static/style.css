@@ -668,11 +668,14 @@ details.disclosure > .disclosure-body { padding: 0 var(--space-4) var(--space-4)
    Standalone pages (login, share)
    --------------------------------------------------------------------- */
 .auth-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
-@media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-hero { display: none; } }
 .auth-hero {
   position: relative; overflow: hidden; background: var(--ink); color: var(--ink-text);
   display: flex; flex-direction: column; justify-content: space-between; padding: var(--space-7);
 }
+/* Must come after the base .auth-hero rule above - same specificity, so
+   source order decides the tie, and a media query earlier in the file loses
+   to an unconditional rule later in it regardless of which one "should" win. */
+@media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-hero { display: none; } }
 .auth-hero::before {
   content: ""; position: absolute; inset: -40%;
   background:
@@ -682,13 +685,41 @@ details.disclosure > .disclosure-body { padding: 0 var(--space-4) var(--space-4)
   filter: blur(40px);
 }
 .auth-hero > * { position: relative; }
-.auth-hero img { height: 26px; width: auto; }
-.auth-hero h2 { color: #fff; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; max-width: 14ch; margin-bottom: var(--space-3); }
+
+.auth-brand { display: flex; align-items: center; gap: var(--space-3); }
+.auth-brand-icon {
+  width: 40px; height: 40px; flex: none; border-radius: var(--radius-md);
+  background: rgba(255, 90, 36, 0.18); display: flex; align-items: center; justify-content: center;
+}
+.auth-brand-icon img { height: 22px; width: auto; }
+.auth-brand-name { color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 15px; line-height: 1.3; }
+.auth-brand-tag { color: var(--ink-text-muted); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+
+.auth-live-badge {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; margin-bottom: var(--space-5);
+  border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--ink-line);
+  color: var(--ink-text-muted); font-size: 12.5px; font-weight: 600;
+}
+.auth-live-badge i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; display: block; }
+
+.auth-hero h2 { color: #fff; font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; max-width: 16ch; margin-bottom: var(--space-3); }
 .auth-hero p { color: var(--ink-text-muted); max-width: 40ch; font-size: 15px; }
+
+.auth-feature-list { list-style: none; margin: var(--space-6) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.auth-feature-list li { display: flex; align-items: center; gap: var(--space-3); color: var(--ink-text-muted); font-size: 14px; }
+.auth-feature-icon {
+  width: 32px; height: 32px; flex: none; border-radius: var(--radius-sm); color: var(--accent);
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ink-line);
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-feature-icon svg { width: 16px; height: 16px; }
+
+.auth-hero-footer { color: var(--ink-text-muted); font-family: var(--font-mono); font-size: 11.5px; margin: 0; }
 .auth-form-side { display: flex; align-items: center; justify-content: center; padding: var(--space-6); background: var(--bg); }
 .auth-card { width: 100%; max-width: 380px; }
 .auth-card .mobile-logo { display: none; height: 22px; margin-bottom: var(--space-5); }
 @media (max-width: 860px) { .auth-card .mobile-logo { display: block; } }
+.auth-switch { text-align: center; margin-top: var(--space-4); font-size: 13.5px; color: var(--text-muted); }
 
 .share-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-5); background: var(--bg); }
 .share-card { width: 100%; max-width: 420px; text-align: center; }

@@ -8,18 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ style_v() }}">
 </head>
 <body>
     <div class="auth-shell">
-        <aside class="auth-hero">
-            <img src="/static/tru-logo-white.png" alt="Tru Performance">
-            <div>
-                <h2>Client deliverables, drafted and delivered.</h2>
-                <p>Collect a brief, let AI draft the deck or workbook, refine it block by block, and publish a shareable link.</p>
-            </div>
-            <p style="font-size:12.5px; margin:0;">&copy; Tru Performance</p>
-        </aside>
+        {% include "_auth_hero.html" %}
         <div class="auth-form-side">
             <div class="auth-card">
                 <img class="mobile-logo" src="/static/tru-logo.png" alt="Tru Performance">
@@ -39,6 +32,7 @@
                         <button type="submit" class="btn btn-primary btn-block">Log in</button>
                     </div>
                 </form>
+                <p class="auth-switch">Don't have an account? <a href="/register">Register</a></p>
             </div>
         </div>
     </div>

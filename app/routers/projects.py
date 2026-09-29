@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.ai.draft import DraftError, generate_draft
-from app.auth import current_user
+from app.assets import style_css_version
+from app.auth import current_user, current_user_email, current_workspace_id
 from app.claude_artifact import (
     ImportError_,
     fetch_artifact,
@@ -16,10 +17,13 @@ from app.claude_artifact import (
 from app.db import get_supabase, sidebar_clients
 from app.input_parsing import parse_upload
 from app.models.schemas import DeliverableType
+from app.scoping import get_project_or_404
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(current_user)])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
+templates.env.globals["style_v"] = style_css_version
+templates.env.globals["current_user_email"] = current_user_email
 
 
 def _latest_input(db, project_id: UUID) -> dict | None:
@@ -166,7 +170,10 @@ def new_project_form(request: Request, client_id: str | None = None):
     """One page that replaces client page -> new project -> input -> draft:
     pick (or add) a client, name the project, give it input, and it lands
     in the editor with a draft already generated."""
-    clients = get_supabase().table("clients").select("id, name").order("name").execute().data
+    clients = (
+        get_supabase().table("clients").select("id, name").eq("workspace_id", current_workspace_id())
+        .order("name").execute().data
+    )
     return templates.TemplateResponse(
         request,
         "projects/new.html",
@@ -192,7 +199,7 @@ async def create_project_and_draft(
     db = get_supabase()
 
     def error_page(message: str, status_code: int = 422):
-        clients = db.table("clients").select("id, name").order("name").execute().data
+        clients = db.table("clients").select("id, name").eq("workspace_id", current_workspace_id()).order("name").execute().data
         return templates.TemplateResponse(
             request,
             "projects/new.html",
@@ -209,18 +216,23 @@ async def create_project_and_draft(
             status_code=status_code,
         )
 
+    workspace_id = current_workspace_id()
+
     # Resolve the client: an existing one, or create it inline.
     if client_id == "__new__" or not client_id:
         name = new_client_name.strip()
         if not name:
             return error_page("Pick a client or enter a name for a new one.")
-        client_id = db.table("clients").insert({"name": name}).execute().data[0]["id"]
-    elif not db.table("clients").select("id").eq("id", client_id).execute().data:
+        client_id = db.table("clients").insert({"name": name, "workspace_id": workspace_id}).execute().data[0]["id"]
+    elif not db.table("clients").select("id").eq("id", client_id).eq("workspace_id", workspace_id).execute().data:
         return error_page("That client no longer exists.")
 
     project = (
         db.table("projects")
-        .insert({"client_id": str(client_id), "title": title.strip(), "deliverable_type": deliverable_type})
+        .insert({
+            "client_id": str(client_id), "title": title.strip(), "deliverable_type": deliverable_type,
+            "workspace_id": workspace_id,
+        })
         .execute()
         .data[0]
     )
@@ -264,7 +276,7 @@ async def create_project_and_draft(
 @router.get("/{project_id}")
 def project_detail(request: Request, project_id: UUID):
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     client = db.table("clients").select("*").eq("id", project["client_id"]).single().execute().data
     latest_input = _latest_input(db, project_id)
     artifact = _get_artifact(db, project_id)
@@ -285,16 +297,14 @@ def project_detail(request: Request, project_id: UUID):
 @router.post("/{project_id}/update")
 def update_project(project_id: UUID, title: str = Form(...), deliverable_type: DeliverableType | None = Form(None)):
     db = get_supabase()
-    project = db.table("projects").select("client_id").eq("id", str(project_id)).execute().data
-    if not project:
-        raise HTTPException(404, "project not found")
+    project = get_project_or_404(db, project_id)
     changes = {"title": title}
     if deliverable_type:
         changes["deliverable_type"] = deliverable_type
     db.table("projects").update(changes).eq(
         "id", str(project_id)
     ).execute()
-    return RedirectResponse(f"/clients/{project[0]['client_id']}", status_code=303)
+    return RedirectResponse(f"/clients/{project['client_id']}", status_code=303)
 
 
 @router.post("/{project_id}/delete")
@@ -302,17 +312,15 @@ def delete_project(project_id: UUID):
     """Cascades through inputs/artifacts/artifact_versions/shares via the FK
     constraints in migrations/001_init.sql - no manual cleanup needed."""
     db = get_supabase()
-    project = db.table("projects").select("client_id").eq("id", str(project_id)).execute().data
-    if not project:
-        raise HTTPException(404, "project not found")
+    project = get_project_or_404(db, project_id)
     db.table("projects").delete().eq("id", str(project_id)).execute()
-    return RedirectResponse(f"/clients/{project[0]['client_id']}", status_code=303)
+    return RedirectResponse(f"/clients/{project['client_id']}", status_code=303)
 
 
 @router.get("/{project_id}/input")
 def input_form(request: Request, project_id: UUID):
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     latest_input = _latest_input(db, project_id)
     return templates.TemplateResponse(
         request,
@@ -337,10 +345,10 @@ def save_input(
     then: str = Form(""),
 ):
     db = get_supabase()
+    project = get_project_or_404(db, project_id)
     raw_data = _brief_raw_data(business_name, goals, key_data_points, notes)
     _insert_input(db, project_id, raw_data, source_type="form")
     if then == "draft":
-        project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
         return _draft_or_error(request, db, project, raw_data, "form", f"/projects/{project_id}/editor")
     return RedirectResponse(f"/projects/{project_id}", status_code=303)
 
@@ -351,7 +359,7 @@ async def upload_input(request: Request, project_id: UUID, file: UploadFile = Fi
     so one click gets from file to editor. An HTML deck for an animated_html
     project is stored verbatim instead (exact clone, edit in place)."""
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     data = await file.read()
     try:
         raw_data, source_type = _ingest_file(db, project, file.filename, data)
@@ -380,7 +388,7 @@ def import_claude_artifact(request: Request, project_id: UUID, url: str = Form(.
     invariant as the form/upload paths) and land in the canvas view. For an
     animated_html project the page is stored as an exact clone instead."""
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     try:
         raw_data = _ingest_claude(db, project, url)
     except ImportError_ as e:
@@ -406,7 +414,7 @@ def import_claude_artifact(request: Request, project_id: UUID, url: str = Form(.
 @router.post("/{project_id}/draft")
 def create_draft(request: Request, project_id: UUID):
     db = get_supabase()
-    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    project = get_project_or_404(db, project_id)
     latest_input = _latest_input(db, project_id)
     if latest_input is None:
         return RedirectResponse(f"/projects/{project_id}/input", status_code=303)

@@ -1,9 +1,11 @@
 # Client Deliverables Platform — technical spec
 
-Solo-builder internal tool: collect client input, AI-draft a deliverable
-(PPTX, XLSX, or animated HTML), edit it, publish a downloadable file or a
-shareable link. Single internal workspace — no multi-tenancy, no client
-logins, no RLS (the app always runs as `service_role`).
+Collect client input, AI-draft a deliverable (PPTX, XLSX, or animated HTML),
+edit it, publish a downloadable file or a shareable link. Multi-tenant as of
+migrations/006_workspaces.sql: public registration, one isolated workspace
+per signup (or join an existing one via invite code), no client logins, no
+Postgres RLS (the app always runs as `service_role` — every workspace
+boundary is enforced in the app layer, see "Workspaces" below).
 
 This file is the source of truth for the platform's invariants. Code
 comments across the repo reference it by name (`grep -rn "TECHNICAL.md"`) —
@@ -47,11 +49,48 @@ input path (form, file upload, shared-artifact-link import) since they all
 funnel through the same `generate_draft()` call.
 
 **Scope discipline (v1).** No audit/tracking tables, no per-view
-time-series, no multi-tenant/RLS plumbing, no queue/worker infrastructure.
+time-series, no Postgres RLS, no queue/worker infrastructure.
 `shares.view_count` is a single counter, not a log. Simplifications made to
 stay inside this scope are marked `ponytail:` in the code with the
 upgrade path named inline — grep for that prefix before assuming a gap is
 accidental.
+
+**Workspaces (multi-tenant).** Every `clients`/`projects` row belongs to
+exactly one `workspaces` row (`workspace_id`); every admin-side route
+resolves ownership through `app/scoping.py`'s `get_client_or_404`/
+`get_project_or_404` rather than a bare `.eq("id", ...)` — skipping that
+isn't a bug, it's a cross-tenant data leak (another workspace's client/
+project readable or writable by guessing its UUID). `editor.py`'s
+`_get_artifact_or_404` is the one choke point every block/publish/export
+route funnels through, so it alone enforces this for the entire artifact
+surface; adding a new project-scoped route means calling one of these, not
+inventing a new lookup.
+
+One user belongs to exactly one workspace (`workspace_members.user_id` is
+its own primary key, not part of a composite) — no cross-workspace
+membership, so every scoping check is a single equality, not a join.
+`POST /register` (`app/auth.py`'s `sign_up`) creates a new workspace, or
+joins an existing one if given a valid `workspaces.invite_code` (shown on
+`/settings`, no expiry/rotation in v1). The session cookie carries
+`workspace_id` (itsdangerous-signed, same mechanism as `email` already
+used) - `app.auth.current_workspace_id()` reads it back via a contextvar,
+which is what `app/scoping.py` and the `sidebar_clients()`/
+`current_user_email()` Jinja globals call, since none of them has direct
+access to the request/dependency chain.
+
+**This is why `current_user()` is `async def`, not `def`:** FastAPI runs a
+*sync* dependency in a threadpool thread via its own copy of the current
+context (`contextvars.copy_context()`), so a `.set()` inside it never
+reaches the route handler's own, separately-copied thread - verified live,
+every scoping check silently saw the default (`None`) workspace until this
+was made `async def`, which runs inline in the request's ambient async
+context instead and never hits that thread boundary. If a future dependency
+needs to set a contextvar another dependency or the route body reads back,
+it must be `async def` for the same reason - a sync one will look like it
+works in a direct Python call (tests that call router functions directly,
+e.g. `tests/test_versioning.py`) and then silently fail to propagate over
+real HTTP, which is exactly the gap `tests/test_editor_route.py` (real
+ASGI app + TestClient) exists to catch.
 
 ## What's built
 

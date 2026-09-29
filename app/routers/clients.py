@@ -1,21 +1,28 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.auth import current_user
+from app.assets import style_css_version
+from app.auth import current_user, current_user_email, current_workspace_id
 from app.db import get_supabase, sidebar_clients
 from app.models.schemas import DeliverableType
+from app.scoping import get_client_or_404
 
 router = APIRouter(prefix="/clients", tags=["clients"], dependencies=[Depends(current_user)])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
+templates.env.globals["style_v"] = style_css_version
+templates.env.globals["current_user_email"] = current_user_email
 
 
 @router.get("")
 def list_clients(request: Request):
-    clients = get_supabase().table("clients").select("*").order("created_at", desc=True).execute().data
+    clients = (
+        get_supabase().table("clients").select("*").eq("workspace_id", current_workspace_id())
+        .order("created_at", desc=True).execute().data
+    )
     return templates.TemplateResponse(request, "clients/list.html", {"clients": clients})
 
 
@@ -32,6 +39,7 @@ def create_client(
             "contact_email": contact_email or None,
             "contact_phone": contact_phone or None,
             "notes": notes or None,
+            "workspace_id": current_workspace_id(),
         }
     ).execute()
     return RedirectResponse("/clients", status_code=303)
@@ -40,7 +48,7 @@ def create_client(
 @router.get("/{client_id}")
 def client_detail(request: Request, client_id: UUID):
     db = get_supabase()
-    client = db.table("clients").select("*").eq("id", str(client_id)).single().execute().data
+    client = get_client_or_404(db, client_id)
     projects = (
         db.table("projects")
         .select("*")
@@ -56,8 +64,15 @@ def client_detail(request: Request, client_id: UUID):
 
 @router.post("/{client_id}/projects")
 def create_project(client_id: UUID, title: str = Form(...), deliverable_type: DeliverableType = Form("animated_html")):
-    get_supabase().table("projects").insert(
-        {"client_id": str(client_id), "title": title, "deliverable_type": deliverable_type}
+    db = get_supabase()
+    get_client_or_404(db, client_id)
+    db.table("projects").insert(
+        {
+            "client_id": str(client_id),
+            "title": title,
+            "deliverable_type": deliverable_type,
+            "workspace_id": current_workspace_id(),
+        }
     ).execute()
     return RedirectResponse(f"/clients/{client_id}", status_code=303)
 
@@ -70,7 +85,9 @@ def update_client(
     contact_phone: str = Form(""),
     notes: str = Form(""),
 ):
-    get_supabase().table("clients").update(
+    db = get_supabase()
+    get_client_or_404(db, client_id)
+    db.table("clients").update(
         {
             "name": name,
             "contact_email": contact_email or None,
@@ -87,8 +104,6 @@ def delete_client(client_id: UUID):
     via the FK constraints in migrations/001_init.sql - no manual cleanup
     needed."""
     db = get_supabase()
-    client = db.table("clients").select("id").eq("id", str(client_id)).execute().data
-    if not client:
-        raise HTTPException(404, "client not found")
+    get_client_or_404(db, client_id)
     db.table("clients").delete().eq("id", str(client_id)).execute()
     return RedirectResponse("/clients", status_code=303)
