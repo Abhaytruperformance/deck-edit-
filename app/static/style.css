@@ -501,6 +501,13 @@ details.disclosure > .disclosure-body { padding: 0 var(--space-4) var(--space-4)
 .menu-panel .field { margin-bottom: var(--space-3); }
 .menu-panel .field label { font-size: 12.5px; }
 
+/* Publish page */
+.publish-new-card { margin-bottom: var(--space-4); }
+.publish-new-card .menu-title { margin-bottom: var(--space-3); }
+.publish-form { display: flex; gap: var(--space-3); align-items: flex-end; flex-wrap: wrap; }
+.publish-form .field { margin-bottom: 0; flex: 1 1 220px; }
+.publish-form .btn { flex: none; }
+
 /* Published links */
 .share-panel { margin-bottom: var(--space-4); }
 .share-panel-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); font-family: var(--font-heading); font-weight: 700; font-size: 13.5px; }
@@ -524,6 +531,7 @@ details.disclosure > .disclosure-body { padding: 0 var(--space-4) var(--space-4)
   display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-2);
   padding: 6px var(--space-3); background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); flex-wrap: wrap;
+  position: sticky; top: 56px; z-index: 10;
 }
 /* ID-scoped on purpose: the shared form styles earlier in this file target
    bare `select`/`input[type=number]` and would otherwise stretch every
@@ -533,7 +541,11 @@ details.disclosure > .disclosure-body { padding: 0 var(--space-4) var(--space-4)
   width: auto; height: 28px; font-size: 12.5px; padding: 0 8px; line-height: 26px;
 }
 #raw-format-bar select.raw-format-select { width: 140px; }
-#raw-format-bar input.raw-format-size { width: 52px; text-align: center; }
+/* Widened, and the native number spinner removed - at the old 52px width
+   the spinner arrows crowded out the digits, clipping the value. */
+#raw-format-bar input.raw-format-size { width: 60px; text-align: center; -moz-appearance: textfield; }
+#raw-format-bar input.raw-format-size::-webkit-outer-spin-button,
+#raw-format-bar input.raw-format-size::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .raw-format-sep { width: 1px; height: 18px; margin: 0 2px; background: var(--border); flex: none; }
 .raw-format-bar .btn-icon.active { background: var(--accent-wash); color: var(--accent); border-color: var(--accent); }
 .raw-format-color {

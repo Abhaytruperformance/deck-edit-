@@ -5,7 +5,7 @@
     ("input", "Input", "/projects/" ~ project.id ~ "/input", true),
     ("draft", "Draft", "/projects/" ~ project.id, true),
     ("edit", "Edit", "/projects/" ~ project.id ~ "/editor", has_artifact),
-    ("publish", "Publish", "/projects/" ~ project.id ~ "/editor", has_artifact),
+    ("publish", "Publish", "/projects/" ~ project.id ~ "/publish", has_artifact),
 ] %}
 <nav class="stepper" aria-label="Project steps">
     {% for key, label, href, reachable in steps %}

@@ -48,62 +48,8 @@
         <button type="submit" class="btn btn-secondary btn-sm">Save version</button>
     </form>
 
-    <details class="menu">
-        <summary class="btn btn-primary btn-sm">Publish &#9662;</summary>
-        <div class="menu-panel menu-panel-form">
-            <div class="menu-title">Publish a new link</div>
-            <form method="post" action="/projects/{{ project.id }}/publish" style="display:block;">
-                <div class="field">
-                    <label for="pub_label">Link name</label>
-                    <input id="pub_label" name="label" placeholder="e.g. Board review" required>
-                </div>
-                <div class="field">
-                    <label for="pub_password">Password <span class="text-faint" style="font-weight:400;">(optional)</span></label>
-                    <input id="pub_password" name="password" type="password" placeholder="Leave blank for open access">
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm btn-block">Publish new link</button>
-                <span class="hint">Saves the current draft as a version and pins the link to it.</span>
-            </form>
-        </div>
-    </details>
+    <a href="/projects/{{ project.id }}/publish" class="btn btn-primary btn-sm">Publish</a>
 </div>
-
-{% if shares %}
-<div class="card share-panel">
-    <div class="share-panel-head">Published links <span class="badge">{{ shares|length }}</span></div>
-    {% for s in shares %}
-    <div class="share-row">
-        <div class="share-row-main">
-            <span class="share-row-label">{{ s.label or "Untitled link" }}{% if s.password_hash %} <span class="badge" title="Password protected">&#128274; protected</span>{% endif %}</span>
-            <span class="share-row-meta">
-                <a href="/s/{{ s.slug }}" target="_blank">/s/{{ s.slug }}</a>
-                <span>&middot; v{{ s.version_number or "?" }}</span>
-                <span>&middot; {{ s.view_count }} view{{ "s" if s.view_count != 1 else "" }}</span>
-            </span>
-        </div>
-        <div class="share-row-actions">
-            <details class="menu">
-                <summary class="btn btn-secondary btn-sm" title="Push the current draft's latest version to this link">Republish &#9662;</summary>
-                <div class="menu-panel menu-panel-form">
-                    <div class="menu-title">Republish this link</div>
-                    <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/republish" style="display:block;">
-                        <div class="field">
-                            <label>New password <span class="text-faint" style="font-weight:400;">(optional)</span></label>
-                            <input name="password" type="password" placeholder="Keep current">
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm btn-block">Update link to latest version</button>
-                    </form>
-                </div>
-            </details>
-            <form method="post" action="/projects/{{ project.id }}/shares/{{ s.id }}/delete"
-                  onsubmit="return confirm('Delete this link? Anyone with the URL will lose access immediately.');">
-                <button type="submit" class="btn btn-danger-ghost btn-sm" title="Delete this link">Delete</button>
-            </form>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 
 {% if artifact.raw_html %}
 <div id="raw-format-bar" class="raw-format-bar">

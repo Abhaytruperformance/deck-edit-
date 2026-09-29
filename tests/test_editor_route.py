@@ -175,7 +175,8 @@ def main():
     assert resp.status_code == 200, resp.text
     assert "pptx" in resp.text.lower()
 
-    resp = client.get(f"/projects/{project_id}/editor")
+    # The Published links list lives on the dedicated Publish page, not the editor.
+    resp = client.get(f"/projects/{project_id}/publish")
     assert resp.status_code == 200 and "Acme Corp" in resp.text and f"/s/{share['slug']}" in resp.text, resp.text
 
     # A second publish creates an independent second link, not a republish of the first.

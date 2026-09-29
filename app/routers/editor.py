@@ -131,23 +131,6 @@ def editor_page(request: Request, project_id: UUID, view: str | None = None):
     db = get_supabase()
     project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
     artifact = _get_artifact_or_404(db, project_id)
-    shares = (
-        db.table("shares")
-        .select("*")
-        .eq("artifact_id", artifact["id"])
-        .order("created_at", desc=True)
-        .execute()
-        .data
-    )
-    # A share only stores published_version_id - fetch the version numbers
-    # separately (rather than relying on PostgREST's FK-embedding syntax)
-    # so each share's list entry can show "pinned to v3" instead of a UUID.
-    versions = (
-        db.table("artifact_versions").select("id, version_number").eq("artifact_id", artifact["id"]).execute().data
-    )
-    version_numbers = {v["id"]: v["version_number"] for v in versions}
-    for s in shares:
-        s["version_number"] = version_numbers.get(s["published_version_id"])
 
     # ?view=... (an explicit toggle click, or a redirect from importing a
     # Claude artifact) always wins and is remembered; otherwise fall back to
@@ -161,7 +144,6 @@ def editor_page(request: Request, project_id: UUID, view: str | None = None):
         {
             "project": project,
             "artifact": artifact,
-            "shares": shares,
             "active": "edit",
             "has_artifact": True,
             "editor_view": editor_view,

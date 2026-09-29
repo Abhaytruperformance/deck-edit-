@@ -16,7 +16,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from app.auth import current_user
 from app.config import settings
-from app.db import get_supabase
+from app.db import get_supabase, sidebar_clients
 from app.renderers import html as html_renderer
 from app.renderers import pptx as pptx_renderer
 from app.renderers import xlsx as xlsx_renderer
@@ -24,6 +24,7 @@ from app.routers.editor import _create_version, _get_artifact_or_404
 
 router = APIRouter(tags=["publish"])
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["sidebar_clients"] = lambda: sidebar_clients(get_supabase())
 
 _share_serializer = URLSafeTimedSerializer(settings.session_secret, salt="share-access")
 _SHARE_COOKIE_MAX_AGE = 60 * 60 * 24  # 1 day
@@ -54,6 +55,48 @@ def _resolve_version_id(db, artifact: dict) -> str:
     return _create_version(db, artifact)["id"]
 
 
+def _shares_with_versions(db, artifact_id: str) -> list[dict]:
+    """Every share for this artifact, newest first, each annotated with the
+    version number it's pinned to. A share only stores published_version_id -
+    fetched separately (rather than relying on PostgREST's FK-embedding
+    syntax) so the list can show "pinned to v3" instead of a UUID."""
+    shares = (
+        db.table("shares")
+        .select("*")
+        .eq("artifact_id", artifact_id)
+        .order("created_at", desc=True)
+        .execute()
+        .data
+    )
+    versions = db.table("artifact_versions").select("id, version_number").eq("artifact_id", artifact_id).execute().data
+    version_numbers = {v["id"]: v["version_number"] for v in versions}
+    for s in shares:
+        s["version_number"] = version_numbers.get(s["published_version_id"])
+    return shares
+
+
+@router.get("/projects/{project_id}/publish", dependencies=[Depends(current_user)])
+def publish_page(request: Request, project_id: UUID):
+    """The dedicated Publish step: create new links and manage every existing
+    one (republish/delete) in a single place, separate from the Edit step so
+    the editor's own slide stage isn't competing with this list for space."""
+    db = get_supabase()
+    project = db.table("projects").select("*").eq("id", str(project_id)).single().execute().data
+    artifact = _get_artifact_or_404(db, project_id)
+    shares = _shares_with_versions(db, artifact["id"])
+    return templates.TemplateResponse(
+        request,
+        "projects/publish.html",
+        {
+            "project": project,
+            "artifact": artifact,
+            "shares": shares,
+            "active": "publish",
+            "has_artifact": True,
+        },
+    )
+
+
 @router.post("/projects/{project_id}/publish", dependencies=[Depends(current_user)])
 def publish(project_id: UUID, label: str = Form(...), password: str = Form("")):
     """Always creates a NEW share - a project can have several independent
@@ -78,7 +121,7 @@ def publish(project_id: UUID, label: str = Form(...), password: str = Form("")):
     db.table("shares").insert(insert).execute()
 
     db.table("projects").update({"status": "published"}).eq("id", str(project_id)).execute()
-    return RedirectResponse(f"/projects/{project_id}/editor", status_code=303)
+    return RedirectResponse(f"/projects/{project_id}/publish", status_code=303)
 
 
 def _get_share_for_project_or_404(db, project_id: UUID, share_id: UUID) -> dict:
@@ -105,7 +148,7 @@ def republish_share(project_id: UUID, share_id: UUID, password: str = Form("")):
     if password:
         update["password_hash"] = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     db.table("shares").update(update).eq("id", share["id"]).execute()
-    return RedirectResponse(f"/projects/{project_id}/editor", status_code=303)
+    return RedirectResponse(f"/projects/{project_id}/publish", status_code=303)
 
 
 @router.post("/projects/{project_id}/shares/{share_id}/delete", dependencies=[Depends(current_user)])
@@ -117,7 +160,7 @@ def delete_share(project_id: UUID, share_id: UUID):
     db = get_supabase()
     share = _get_share_for_project_or_404(db, project_id, share_id)
     db.table("shares").delete().eq("id", share["id"]).execute()
-    return RedirectResponse(f"/projects/{project_id}/editor", status_code=303)
+    return RedirectResponse(f"/projects/{project_id}/publish", status_code=303)
 
 
 def _render_bytes(deliverable_type: str, blocks: list[dict]):
